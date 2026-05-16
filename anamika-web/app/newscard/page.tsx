@@ -1,263 +1,276 @@
-"use client";
+'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Download, Camera, Sliders, Type, RotateCcw, LayoutDashboard } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon } from 'lucide-react';
+import { toPng } from 'html-to-image';
 
-export default function TongerKhoborEnglishUI() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
+type Category = 'NATIONAL' | 'INTERNATIONAL' | 'SPORTS' | 'POLITICS' | 'ECONOMY' | 'SOCIAL';
+type Variant = 'white' | 'black' | 'general' | 'tong';
 
-  // --- Content States (Supports Bangla/English) ---
-  const [headline, setHeadline] = useState('টংগেরখবর-এর নতুন এআই ভিত্তিক নিউজ জেনারেটর এখন সবার জন্য উন্মুক্ত');
-  const [subHeadline, setSubHeadline] = useState('উন্নত গ্রাফিক্স এবং কাস্টমাইজেশন ফিচারের মাধ্যমে এখন যেকোনো সংবাদ মুহূর্তেই কার্ড আকারে প্রকাশ করা সম্ভব।');
-  const [category, setCategory] = useState('আন্তর্জাতিক');
-  const [date, setDate] = useState('মে ১৪, ২০২৬');
-  const [credit, setCredit] = useState('ছবি: সংগৃহীত/টংগেরখবর');
-  
-  // --- Image Configuration States ---
-  const [imgObj, setImgObj] = useState<HTMLImageElement | null>(null);
-  const [imgConfig, setImgConfig] = useState({ zoom: 1.1, x: 0, y: 0, bright: 100 });
+export default function NewsCardGenerator() {
+  // Input Form States
+  const [category, setCategory] = useState<Category>('NATIONAL');
+  const [headline, setHeadline] = useState('এখানে আপনার ব্রেকিং নিউজ বা আকর্ষণীয় হেডলাইনটি লিখুন');
+  const [photoCredit, setPhotoCredit] = useState('ছবি: টংয়েরখবর');
+  const [selectedVariant, setSelectedVariant] = useState<Variant>('white');
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
-  // --- Canvas Rendering Engine ---
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const cardRef = useRef<HTMLDivElement>(null);
 
-    // Standard High-Res Portrait Aspect Ratio (4:5)
-    const W = 1080;
-    const H = 1350;
-    canvas.width = W;
-    canvas.height = H;
-
-    // 1. Dark Base Background Color
-    ctx.fillStyle = '#0a0f1d'; 
-    ctx.fillRect(0, 0, W, H);
-
-    // 2. Main Image Rendering (Top Area)
-    const imgHeight = 920; 
-    if (imgObj) {
-      ctx.save();
-      ctx.rect(0, 0, W, imgHeight);
-      ctx.clip();
-      
-      ctx.filter = `brightness(${imgConfig.bright}%)`;
-      const ratio = imgObj.width / imgObj.height;
-      let dW = W * imgConfig.zoom;
-      let dH = (W / ratio) * imgConfig.zoom;
-      
-      ctx.drawImage(imgObj, (W - dW) / 2 + imgConfig.x, (imgHeight - dH) / 2 + imgConfig.y, dW, dH);
-      ctx.restore();
-
-      // 3. Smooth Dense Gradient Overlay (For clear typography readability)
-      const grad = ctx.createLinearGradient(0, 450, 0, imgHeight);
-      grad.addColorStop(0, 'rgba(10, 15, 29, 0)');
-      grad.addColorStop(0.6, 'rgba(10, 15, 29, 0.8)');
-      grad.addColorStop(1, '#0a0f1d');
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 450, W, imgHeight - 450 + 5);
-    }
-
-    // 4. Photo Credits
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '24px Arial, "SolaimanLipi", sans-serif';
-    ctx.fillText(credit, 50, 60);
-
-    // 5. Typography Layout Engine (Fully optimized for Bangla vowel signs/Kar-phola)
-    const margin = 70;
-    let textY = 930;
-
-    // Category Badge
-    ctx.fillStyle = '#f43f5e'; 
-    ctx.font = 'bold 42px Arial, "SolaimanLipi", sans-serif';
-    ctx.fillText(category, margin, textY);
-
-    // Date
-    textY += 60;
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '32px Arial, "SolaimanLipi", sans-serif';
-    ctx.fillText(date, margin, textY);
-
-    // Headline (Auto-wrapping multi-line calculation)
-    textY += 100;
-    ctx.fillStyle = '#ffffff';
-    const hSize = 72;
-    ctx.font = `bold ${hSize}px Arial, "SolaimanLipi", sans-serif`;
-    
-    const wrapText = (text: string, maxWidth: number) => {
-      const words = text.split(' ');
-      let lines = [];
-      let currentLine = words[0];
-      for (let i = 1; i < words.length; i++) {
-        let testLine = currentLine + " " + words[i];
-        if (ctx.measureText(testLine).width < maxWidth) {
-          currentLine = testLine;
-        } else {
-          lines.push(currentLine);
-          currentLine = words[i];
-        }
-      }
-      lines.push(currentLine);
-      return lines;
-    };
-
-    const headlineLines = wrapText(headline, W - (margin * 2));
-    headlineLines.forEach((line) => {
-      ctx.fillText(line, margin, textY);
-      textY += hSize * 1.3; // Added extra line-height spacing for complex Bangla characters
-    });
-
-    // Subheadline / Summary Text
-    textY += 20;
-    ctx.fillStyle = '#cbd5e1';
-    ctx.font = '38px Arial, "SolaimanLipi", sans-serif';
-    const subLines = wrapText(subHeadline, W - (margin * 2));
-    subLines.forEach((line) => {
-      ctx.fillText(line, margin, textY);
-      textY += 58;
-    });
-
-  }, [headline, subHeadline, category, date, credit, imgObj, imgConfig]);
-
-  useEffect(() => { draw(); }, [draw]);
-
-  // --- Handlers ---
+  // Handle local system image upload for news asset
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          setImgObj(img);
-        };
-        img.src = event.target?.result as string;
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const triggerDownload = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // Trigger HTML to PNG Image download trigger
+  const handleDownloadCard = async () => {
+    if (cardRef.current === null) return;
+    setIsExporting(true);
     
     try {
-      const dataUrl = canvas.toDataURL('image/png', 1.0);
+      // Ensure local dynamic image styles process cleanly 
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 2, // Retains high fidelity density matching template mockups
+      });
+      
       const link = document.createElement('a');
-      link.download = `tongerkhobor-card-${Date.now()}.png`;
+      link.download = `TongerKhobor-${category}-${Date.now()}.png`;
       link.href = dataUrl;
-      document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
-    } catch (err) {
-      console.error("Export Error:", err);
-      alert("Something went wrong while exporting the image. Please try again.");
+    } catch (error) {
+      console.error('Oops, something went wrong with element compression!', error);
+    } finally {
+      setIsExporting(false);
     }
   };
 
   return (
-    <div className="flex h-screen bg-black overflow-hidden font-sans antialiased text-slate-200">
-      
-      {/* --- Control Sidebar (Full English UI) --- */}
-      <aside className="w-[450px] bg-zinc-900 border-r border-zinc-800 p-8 flex flex-col gap-8 overflow-y-auto select-none">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-rose-600 rounded-xl flex items-center justify-center font-black text-white shadow-md shadow-rose-600/20">TK</div>
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-white leading-none">TONGER KHOBOR</h1>
-            <span className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">Creator Studio Pro</span>
-          </div>
-        </div>
-
-        {/* Section: Editorial Data */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-wider">
-            <Type size={14}/> <span>Editorial Content</span>
+    <div className="min-h-screen bg-stone-100 font-sans text-stone-800 pb-12">
+      {/* Top Header Controls bar */}
+      <div className="bg-white border-b border-stone-200 sticky top-0 z-50 px-4 py-4 sm:px-6 shadow-sm">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Link href="/" className="p-2 bg-stone-50 hover:bg-stone-200 rounded-xl transition text-stone-600">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div>
+              <h1 className="text-xl font-bold text-stone-900">News Card Generator</h1>
+              <p className="text-xs text-stone-500">Create automated internal social banners</p>
+            </div>
           </div>
           
-          <div className="space-y-1">
-            <label className="text-[11px] text-zinc-400 font-medium">Category</label>
-            <input type="text" value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700/60 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-rose-600 transition-all text-sm font-medium" placeholder="e.g., আন্তর্জাতিক" />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] text-zinc-400 font-medium">Date Stamp</label>
-            <input type="text" value={date} onChange={e => setDate(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700/60 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-rose-600 transition-all text-sm font-medium" placeholder="e.g., মে ১৪, ২০২৬" />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] text-zinc-400 font-medium">Main Headline</label>
-            <textarea value={headline} onChange={e => setHeadline(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700/60 p-3 rounded-xl text-white outline-none h-28 text-sm font-bold tracking-wide resize-none focus:ring-2 focus:ring-rose-600 transition-all" placeholder="Enter headline in Bangla or English..." />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] text-zinc-400 font-medium">Sub-headline / Summary</label>
-            <textarea value={subHeadline} onChange={e => setSubHeadline(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700/60 p-3 rounded-xl text-zinc-300 outline-none h-24 text-sm resize-none focus:ring-2 focus:ring-rose-600 transition-all" placeholder="Enter sub-headline context..." />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-[11px] text-zinc-400 font-medium">Photo Credits</label>
-            <input type="text" value={credit} onChange={e => setCredit(e.target.value)} className="w-full bg-zinc-800 border border-zinc-700/60 p-3 rounded-xl text-white outline-none focus:ring-2 focus:ring-rose-600 transition-all text-sm" placeholder="e.g., ছবি: সংগৃহীত" />
-          </div>
-        </div>
-
-        {/* Section: Media Controls */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-wider">
-            <LayoutDashboard size={14}/> <span>Media Controls</span>
-          </div>
-          
-          <button onClick={() => fileInput.current?.click()} className="w-full bg-white text-black py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-zinc-200 transition-all shadow-md">
-            <Camera size={18}/> UPLOAD COVER PHOTO
+          <button
+            onClick={handleDownloadCard}
+            disabled={isExporting}
+            className="bg-[#800020] hover:bg-[#600018] disabled:bg-stone-400 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md transition flex items-center space-x-2"
+          >
+            {isExporting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            <span>{isExporting ? 'Generating...' : 'Download Card'}</span>
           </button>
-          <input type="file" ref={fileInput} hidden accept="image/*" onChange={handleImageUpload} />
+        </div>
+      </div>
 
-          {imgObj && (
-            <div className="bg-zinc-800/40 p-5 rounded-2xl border border-zinc-800 space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-zinc-400 font-bold tracking-wide">
-                  <span>CANVAS ZOOM</span>
-                  <span className="text-rose-500">{Math.round(imgConfig.zoom * 100)}%</span>
-                </div>
-                <input type="range" min="0.5" max="3" step="0.01" value={imgConfig.zoom} onChange={e => setImgConfig(s => ({...s, zoom: parseFloat(e.target.value)}))} className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-rose-600" />
-              </div>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-zinc-400 font-bold tracking-wide">
-                  <span>BRIGHTNESS</span>
-                  <span className="text-amber-500">{imgConfig.bright}%</span>
-                </div>
-                <input type="range" min="50" max="150" value={imgConfig.bright} onChange={e => setImgConfig(s => ({...s, bright: parseInt(e.target.value)}))} className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-amber-500" />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* --- LEFT COL: FORM INTERFACES CONTROLS (5 Cols) --- */}
+          <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
+            <h2 className="text-sm font-bold text-stone-900 tracking-wider uppercase border-b border-stone-100 pb-3">Card Customizer</h2>
+            
+            {/* Card Variant Template Mode Switcher */}
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Card Style Template</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedVariant('white')}
+                  className={`py-2 px-3 text-xs font-medium rounded-xl border transition ${selectedVariant === 'white' ? 'bg-[#800020] text-white border-[#800020]' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'}`}
+                >
+                  White Version
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedVariant('black')}
+                  className={`py-2 px-3 text-xs font-medium rounded-xl border transition ${selectedVariant === 'black' ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'}`}
+                >
+                  Black Version
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="py-2 px-3 text-xs font-medium rounded-xl border bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed flex items-center justify-center space-x-1"
+                  title="Under maintenance"
+                >
+                  <span>General Mode</span>
+                  <span className="text-[9px] bg-stone-200 px-1.5 py-0.2 rounded text-stone-500 font-mono">OFF</span>
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="py-2 px-3 text-xs font-medium rounded-xl border bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed flex items-center justify-center space-x-1"
+                  title="Under maintenance"
+                >
+                  <span>Tong Version</span>
+                  <span className="text-[9px] bg-stone-200 px-1.5 py-0.2 rounded text-stone-500 font-mono">OFF</span>
+                </button>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* Action Button */}
-        <button 
-          onClick={triggerDownload}
-          className="mt-auto w-full bg-rose-600 text-white py-4 rounded-xl font-extrabold text-base tracking-wide shadow-lg shadow-rose-950/40 hover:bg-rose-500 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        >
-          <Download size={18}/> EXPORT ULTRA HD IMAGE
-        </button>
-      </aside>
+            {/* Category selection */}
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">News Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as Category)}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020]"
+              >
+                <option value="NATIONAL">National (জাতীয়)</option>
+                <option value="INTERNATIONAL">International (আন্তর্জাতিক)</option>
+                <option value="SPORTS">Sports (খেলাধুলা)</option>
+                <option value="POLITICS">Politics (রাজনীতি)</option>
+                <option value="ECONOMY">Economy (অর্থনীতি)</option>
+                <option value="SOCIAL">Social (সমাজ)</option>
+              </select>
+            </div>
 
-      {/* --- Real-Time Studio Canvas Preview Area --- */}
-      <main className="flex-1 bg-[#05060e] flex items-center justify-center p-12 relative">
-        <div className="absolute top-6 left-6 flex items-center gap-2 bg-zinc-900/60 backdrop-blur-md px-4 py-2 rounded-full border border-zinc-800">
-          <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-          <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Live Studio Monitor</span>
-        </div>
-        
-        <div className="relative group">
-          <div className="absolute -inset-4 bg-rose-600/5 rounded-[3rem] blur-3xl group-hover:bg-rose-600/10 transition-all duration-1000"></div>
-          <div className="relative bg-zinc-900 p-2.5 rounded-[2rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] border border-zinc-800">
-            <canvas 
-              ref={canvasRef} 
-              style={{ width: '430px', height: 'auto', aspectRatio: '1080/1350' }}
-              className="rounded-[1.4rem]"
-            />
+            {/* Media Asset Image upload */}
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Cover Image File</label>
+              <div className="relative border-2 border-dashed border-stone-200 hover:border-[#800020] rounded-xl transition bg-stone-50 p-4 text-center cursor-pointer">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleImageUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                />
+                <div className="flex flex-col items-center space-y-1 text-stone-500">
+                  <ImageIcon className="h-6 w-6 text-stone-400" />
+                  <span className="text-xs font-medium">Click to select file content image</span>
+                  <span className="text-[10px] text-stone-400 font-mono">PNG, JPG, WEBP assets</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Headline input field */}
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Headline Banner Text</label>
+              <textarea
+                rows={3}
+                value={headline}
+                onChange={(e) => setHeadline(e.target.value)}
+                maxLength={140}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020] leading-relaxed resize-none"
+                placeholder="শিরোনামটি টাইপ করুন..."
+              />
+              <span className="text-[10px] text-stone-400 font-mono float-right mt-1">{headline.length}/140 characters</span>
+            </div>
+
+            {/* Image Credit string input field */}
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Photo Credit Attribution</label>
+              <input
+                type="text"
+                value={photoCredit}
+                onChange={(e) => setPhotoCredit(e.target.value)}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020]"
+                placeholder="যেমন, ছবি: সংগৃহীত"
+              />
+            </div>
           </div>
+
+          {/* --- RIGHT COL: LIVE CANVAS ENGINE PREVIEW (7 Cols) --- */}
+          <div className="lg:col-span-7 flex flex-col items-center">
+            <div className="w-full max-w-md sticky top-24">
+              <span className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center space-x-2 mb-3">
+                <Eye className="h-3.5 w-3.5 text-[#800020]" />
+                <span>Live WYSIWYG Canvas Preview</span>
+              </span>
+
+              {/* Render Wrapper Node targeted by html-to-image converter */}
+              <div 
+                ref={cardRef}
+                className={`w-[450px] h-[580px] flex flex-col justify-between shadow-2xl overflow-hidden relative font-sans transition-all duration-300 select-none bg-white`}
+                style={{ minWidth: '450px', minHeight: '580px' }}
+              >
+                
+                {/* UP-SECTION: Asset Image Area Cover box config */}
+                <div className="w-full h-[330px] relative bg-stone-900 overflow-hidden flex items-center justify-center group">
+                  {imagePreview ? (
+                    <img 
+                      src={imagePreview} 
+                      alt="News visual setup" 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    <div className="text-stone-500 text-xs font-mono tracking-wider flex flex-col items-center space-y-2">
+                      <ImageIcon className="h-10 w-10 text-stone-700 stroke-[1.2]" />
+                      <span>NO COVER IMAGE SELECTED</span>
+                    </div>
+                  )}
+
+                  {/* Dynamic Photo Credit absolute indicator inside graphic */}
+                  {photoCredit && (
+                    <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded text-[10px] font-medium tracking-wide">
+                      {photoCredit}
+                    </div>
+                  )}
+                </div>
+
+                {/* BOTTOM-SECTION: Theme Custom dynamic content card structure */}
+                <div 
+                  className={`w-full h-[250px] p-6 flex flex-col justify-between relative border-t-4 ${
+                    selectedVariant === 'black' 
+                      ? 'bg-[#121212] border-[#800020] text-white' 
+                      : 'bg-white border-[#800020] text-stone-950'
+                  }`}
+                >
+                  {/* Category string text flag configuration mapping */}
+                  <div>
+                    <span className="text-[11px] font-black tracking-widest text-[#800020] bg-[#800020]/10 px-2.5 py-1 rounded-md uppercase">
+                      {category}
+                    </span>
+                    
+                    {/* Render targeted Bangla input layout text headline */}
+                    <h2 className="text-xl font-bold leading-snug mt-4 text-justify tracking-wide font-sans line-clamp-4">
+                      {headline || 'শিরোনাম অনুপস্থিত...'}
+                    </h2>
+                  </div>
+
+                  {/* Brand signature branding assets baseline anchor */}
+                  <div className="flex items-center justify-between pt-2 border-t border-stone-200/20">
+                    <span className="text-[10px] font-semibold text-stone-400 font-mono uppercase tracking-widest">
+                      Internal Wire Network
+                    </span>
+                    
+                    {/* Secondary PNG branding configuration requested structure */}
+                    <div className="relative h-7 w-24">
+                      <Image 
+                        src="/logo2.png" 
+                        alt="TongerKhobor Layout Asset" 
+                        fill
+                        priority
+                        className={`object-contain ${selectedVariant === 'black' ? 'brightness-0 invert' : ''}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+              <p className="text-center text-xs text-stone-400 font-mono mt-4">Canvas Target Spec: 450x580 pixels (High Density DPI output)</p>
+            </div>
+          </div>
+
         </div>
       </main>
     </div>
