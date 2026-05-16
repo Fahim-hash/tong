@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Newspaper, LayoutDashboard, FilePlus2, Users, Settings, ArrowRight, Lock, User, EyeOff, LogOut, Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import { Newspaper, LayoutDashboard, FilePlus2, Users, Settings, ArrowRight, Lock, User, LogOut, Loader2 } from 'lucide-react';
 
 interface Member {
   id: string;
@@ -90,9 +91,17 @@ export default function InternalDashboard() {
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden">
           
           {/* Header Brand Branding Section */}
-          <div className="bg-gradient-to-r from-[#600018] to-[#800020] p-8 text-center text-white">
-            <div className="inline-flex bg-white text-[#800020] h-14 w-14 items-center justify-center rounded-xl font-black text-2xl tracking-tighter shadow-md mb-3">
-              TK
+          <div className="bg-gradient-to-r from-[#600018] to-[#800020] p-8 text-center text-white flex flex-col items-center">
+            {/* PNG Logo Integration */}
+            <div className="mb-3 transform transition hover:scale-105 duration-200">
+              <Image 
+                src="/logo.png" 
+                alt="TongerKhobor Logo" 
+                width={64} 
+                height={64} 
+                className="object-contain"
+                priority
+              />
             </div>
             <h1 className="text-2xl font-bold tracking-wide">TongerKhobor</h1>
             <p className="text-stone-200 text-xs uppercase tracking-widest mt-1">Gated Internal System</p>
@@ -182,8 +191,15 @@ export default function InternalDashboard() {
             
             {/* Logo Section */}
             <div className="flex items-center space-x-3">
-              <div className="bg-white text-[#800020] p-2 rounded-lg font-black text-xl tracking-tighter shadow-inner">
-                TK
+              {/* PNG Logo Integration inside Dashboard Navbar */}
+              <div className="p-1.5 bg-white/10 rounded-lg flex items-center justify-center">
+                <Image 
+                  src="/logo.png" 
+                  alt="TongerKhobor Logo" 
+                  width={34} 
+                  height={34} 
+                  className="object-contain inverted-logo-brightness"
+                />
               </div>
               <div>
                 <span className="font-bold text-lg tracking-wide block leading-none">TongerKhobor</span>
