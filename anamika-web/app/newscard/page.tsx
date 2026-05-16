@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy, Check } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 type Category = 'NATIONAL' | 'INTERNATIONAL' | 'SPORTS' | 'POLITICS' | 'ECONOMY' | 'SOCIAL';
@@ -12,12 +12,17 @@ type Variant = 'white' | 'black' | 'general' | 'tong';
 export default function NewsCardGenerator() {
   // Input Form States
   const [category, setCategory] = useState<Category>('NATIONAL');
-  const [headline, setHeadline] = useState('এখানে আপনার ব্রেকিং নিউজ বা আকর্ষণীয় মূল হেডলাইনটি লিখুন');
-  const [subHeadline, setSubHeadline] = useState('এখানে সংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
-  const [photoCredit, setPhotoCredit] = useState('ছবি: টংয়েরখবর');
+  const [headline, setHeadline] = useState('এখানে আপনার ব্রেকিং নিউজ বা আকর্ষণীয় মূল হেডলাইনটি লিখুন');
+  const [subHeadline, setSubHeadline] = useState('এখানে সংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
+  const [photoCredit, setPhotoCredit] = useState('ছবি: টংয়েরখবর');
   const [selectedVariant, setSelectedVariant] = useState<Variant>('black');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  // AI Caption States
+  const [generatedCaption, setGeneratedCaption] = useState<string>('');
+  const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [isCopied, setIsCopied] = useState<boolean>(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
@@ -60,10 +65,15 @@ export default function NewsCardGenerator() {
     setIsExporting(true);
     
     try {
-      // 1080x1350 output render profile
+      // html-to-image options to fix transform scale shifting and stretching issues
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        pixelRatio: 1, // 1080x1350 output relies directly on raw block metrics now
+        pixelRatio: 1,
+        style: {
+          transform: 'scale(1)',
+          left: '0',
+          top: '0',
+        },
       });
       
       const link = document.createElement('a');
@@ -75,6 +85,48 @@ export default function NewsCardGenerator() {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  // AI Caption Generator Function
+  const handleGenerateCaption = async () => {
+    if (!headline || headline === 'এখানে আপনার ব্রেকিং নিউজ বা আকর্ষণীয় মূল হেডলাইনটি লিখুন') {
+      alert('দয়া করে আগে একটি নিউজ হেডলাইন লিখুন।');
+      return;
+    }
+
+    setIsAiLoading(true);
+    setGeneratedCaption('');
+    
+    try {
+      const res = await fetch('/api/generate-caption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          headline,
+          subHeadline,
+          image: imagePreview,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.caption) {
+        setGeneratedCaption(data.caption);
+      } else {
+        setGeneratedCaption('ক্যাপশন জেনারেট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+      }
+    } catch (error) {
+      console.error(error);
+      setGeneratedCaption('সার্ভার ত্রুটি! আবার চেষ্টা করুন।');
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleCopyCaption = () => {
+    if (!generatedCaption) return;
+    navigator.clipboard.writeText(generatedCaption);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   };
 
   const getCategoryLabel = (cat: Category) => {
@@ -225,9 +277,42 @@ export default function NewsCardGenerator() {
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020]"
               />
             </div>
+
+            {/* --- AI CAPTION GENERATOR BUTTON & DISPLAY --- */}
+            <div className="border-t border-stone-200 pt-4 space-y-3">
+              <button
+                type="button"
+                onClick={handleGenerateCaption}
+                disabled={isAiLoading}
+                className="w-full bg-gradient-to-r from-purple-700 to-indigo-700 hover:from-purple-800 hover:to-indigo-800 disabled:from-stone-400 disabled:to-stone-400 text-white py-3 px-4 rounded-xl font-semibold text-sm shadow-md transition flex items-center justify-center space-x-2"
+              >
+                {isAiLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                <span>{isAiLoading ? 'AI Searching & Writing...' : 'Generate AI Caption (Live Search)'}</span>
+              </button>
+
+              {generatedCaption && (
+                <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 relative group">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-xs font-bold text-purple-700 tracking-wider uppercase flex items-center space-x-1">
+                      <Sparkles className="h-3 w-3" /> <span>AI Generated Caption</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyCaption}
+                      className="p-1.5 bg-white text-purple-600 hover:bg-purple-100 rounded-lg transition border border-purple-200 shadow-sm"
+                    >
+                      {isCopied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-stone-700 whitespace-pre-line leading-relaxed">
+                    {generatedCaption}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* --- RIGHT COL: LIVE CANVAS ENGINE PREVIEW (Responsive Scale Grid) --- */}
+          {/* --- RIGHT COL: LIVE CANVAS ENGINE PREVIEW --- */}
           <div className="lg:col-span-7 flex flex-col items-center justify-center">
             <div className="w-full flex flex-col items-center">
               <span className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center space-x-2 mb-3 self-start lg:ml-12">
@@ -235,16 +320,13 @@ export default function NewsCardGenerator() {
                 <span>Live Scaled Canvas Preview (4:5 Ratio)</span>
               </span>
 
-              {/* Viewport scaling wrapper to cleanly hold 1080x1350 node inside web viewport grids */}
               <div className="w-[360px] h-[450px] relative border border-stone-300 rounded-2xl shadow-2xl overflow-hidden bg-stone-900">
                 
-                {/* Real Output Canvas Node: Absolute 1080x1350 scaled to 0.3333 match viewports */}
                 <div 
                   ref={cardRef}
                   className="w-[1080px] h-[1350px] absolute top-0 left-0 origin-top-left flex flex-col justify-end select-none bg-stone-950"
                   style={{ transform: 'scale(0.333333)' }}
                 >
-                  {/* Photo Cover Asset Layer */}
                   {imagePreview ? (
                     <img 
                       src={imagePreview} 
@@ -258,14 +340,12 @@ export default function NewsCardGenerator() {
                     </div>
                   )}
 
-                  {/* Top-Left Absolute Credit Tag */}
                   {photoCredit && (
                     <div className="absolute top-10 left-10 z-20 text-white/80 text-xl font-medium tracking-wide drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] bg-black/30 px-4 py-1.5 rounded-lg backdrop-blur-sm">
                       {photoCredit}
                     </div>
                   )}
 
-                  {/* Dynamic Dark Gradient Backdrop Cover for Text visibility */}
                   <div 
                     className={`w-full pt-80 pb-16 px-14 relative z-10 flex flex-col justify-end ${
                       selectedVariant === 'white' 
@@ -273,46 +353,40 @@ export default function NewsCardGenerator() {
                         : 'bg-gradient-to-t from-[#090d14] via-[#090d14]/95 to-transparent text-white'
                     }`}
                   >
-                    {/* Category Label */}
                     <div className="text-[#c1121f] font-black text-4xl uppercase tracking-wider mb-3">
                       {getCategoryLabel(category)}
                     </div>
                     
-                    {/* Time Stamp */}
                     <div className="text-xl font-medium tracking-wide mb-6 opacity-70">
                       {getBanglaDate()}
                     </div>
 
-                    {/* Bold Standard News Headline */}
                     <h2 className="text-[52px] font-extrabold leading-[1.25] tracking-wide text-left mb-6 font-sans">
                       {headline || 'শিরোনাম অনুপস্থিত...'}
                     </h2>
 
-                    {/* Subhead Context Lines */}
                     <p className="text-2xl leading-relaxed text-left opacity-80 font-normal line-clamp-3 mb-10">
                       {subHeadline}
                     </p>
 
-                    {/* Footer Identity row layout */}
                     <div className="flex items-center justify-between pt-8 border-t border-stone-500/30">
                       <span className="text-lg font-semibold text-stone-400 font-mono uppercase tracking-widest">
                         TongerKhobor Digital Network
                       </span>
                       
-                      {/* Brand Dynamic Asset */}
                       <div className="relative h-14 w-48">
                         <Image 
                           src="/logo2.png" 
                           alt="Layout Branding Asset" 
                           fill
                           priority
+                          unoptimized
                           className={`object-contain ${selectedVariant === 'black' ? 'brightness-0 invert' : ''}`}
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* Top blend bar shadow */}
                   <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-black/50 to-transparent pointer-events-none z-10" />
                 </div>
 
