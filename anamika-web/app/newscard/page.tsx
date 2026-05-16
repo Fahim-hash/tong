@@ -12,15 +12,38 @@ type Variant = 'white' | 'black' | 'general' | 'tong';
 export default function NewsCardGenerator() {
   // Input Form States
   const [category, setCategory] = useState<Category>('NATIONAL');
-  const [headline, setHeadline] = useState('এখানে আপনার ব্রেকিং নিউজ বা আকর্ষণীয় হেডলাইনটি লিখুন');
+  const [headline, setHeadline] = useState('এখানে আপনার ব্রেকিং নিউজ বা আকর্ষণীয় মূল হেডলাইনটি লিখুন');
+  const [subHeadline, setSubHeadline] = useState('এখানে সংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
   const [photoCredit, setPhotoCredit] = useState('ছবি: টংয়েরখবর');
-  const [selectedVariant, setSelectedVariant] = useState<Variant>('white');
+  const [selectedVariant, setSelectedVariant] = useState<Variant>('black');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   const cardRef = useRef<HTMLDivElement>(null);
 
-  // Handle local system image upload for news asset
+  // Helper function to get current date in Bengali
+  const getBanglaDate = () => {
+    const date = new Date();
+    const months = [
+      'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 
+      'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'
+    ];
+    
+    const engToBngDigits = (str: string) => {
+      const convert: { [key: string]: string } = {
+        '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', 
+        '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+      };
+      return str.split('').map(d => convert[d] || d).join('');
+    };
+
+    const day = engToBngDigits(date.getDate().toString());
+    const month = months[date.getMonth()];
+    const year = engToBngDigits(date.getFullYear().toString());
+
+    return `${month} ${day}, ${year}`;
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -32,16 +55,15 @@ export default function NewsCardGenerator() {
     }
   };
 
-  // Trigger HTML to PNG Image download trigger
   const handleDownloadCard = async () => {
     if (cardRef.current === null) return;
     setIsExporting(true);
     
     try {
-      // Ensure local dynamic image styles process cleanly 
+      // 1080x1350 output render profile
       const dataUrl = await toPng(cardRef.current, {
         cacheBust: true,
-        pixelRatio: 2, // Retains high fidelity density matching template mockups
+        pixelRatio: 1, // 1080x1350 output relies directly on raw block metrics now
       });
       
       const link = document.createElement('a');
@@ -49,10 +71,22 @@ export default function NewsCardGenerator() {
       link.href = dataUrl;
       link.click();
     } catch (error) {
-      console.error('Oops, something went wrong with element compression!', error);
+      console.error('Oops, something went wrong with compression!', error);
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const getCategoryLabel = (cat: Category) => {
+    const labels = {
+      NATIONAL: 'জাতীয়',
+      INTERNATIONAL: 'আন্তর্জাতিক',
+      SPORTS: 'খেলাধুলা',
+      POLITICS: 'রাজনীতি',
+      ECONOMY: 'অর্থনীতি',
+      SOCIAL: 'সমাজ'
+    };
+    return labels[cat];
   };
 
   return (
@@ -66,7 +100,7 @@ export default function NewsCardGenerator() {
             </Link>
             <div>
               <h1 className="text-xl font-bold text-stone-900">News Card Generator</h1>
-              <p className="text-xs text-stone-500">Create automated internal social banners</p>
+              <p className="text-xs text-stone-500">Fixed HD Ratio: 1080 × 1350 px</p>
             </div>
           </div>
           
@@ -76,7 +110,7 @@ export default function NewsCardGenerator() {
             className="bg-[#800020] hover:bg-[#600018] disabled:bg-stone-400 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md transition flex items-center space-x-2"
           >
             {isExporting ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            <span>{isExporting ? 'Generating...' : 'Download Card'}</span>
+            <span>{isExporting ? 'Generating...' : 'Download HD Card'}</span>
           </button>
         </div>
       </div>
@@ -84,11 +118,11 @@ export default function NewsCardGenerator() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* --- LEFT COL: FORM INTERFACES CONTROLS (5 Cols) --- */}
-          <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-6">
+          {/* --- LEFT COL: FORM INTERFACES CONTROLS --- */}
+          <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-5">
             <h2 className="text-sm font-bold text-stone-900 tracking-wider uppercase border-b border-stone-100 pb-3">Card Customizer</h2>
             
-            {/* Card Variant Template Mode Switcher */}
+            {/* Template Variant Switcher */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Card Style Template</label>
               <div className="grid grid-cols-2 gap-2">
@@ -110,19 +144,15 @@ export default function NewsCardGenerator() {
                   type="button"
                   disabled
                   className="py-2 px-3 text-xs font-medium rounded-xl border bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed flex items-center justify-center space-x-1"
-                  title="Under maintenance"
                 >
-                  <span>General Mode</span>
-                  <span className="text-[9px] bg-stone-200 px-1.5 py-0.2 rounded text-stone-500 font-mono">OFF</span>
+                  <span>General Mode (OFF)</span>
                 </button>
                 <button
                   type="button"
                   disabled
                   className="py-2 px-3 text-xs font-medium rounded-xl border bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed flex items-center justify-center space-x-1"
-                  title="Under maintenance"
                 >
-                  <span>Tong Version</span>
-                  <span className="text-[9px] bg-stone-200 px-1.5 py-0.2 rounded text-stone-500 font-mono">OFF</span>
+                  <span>Tong Version (OFF)</span>
                 </button>
               </div>
             </div>
@@ -144,7 +174,7 @@ export default function NewsCardGenerator() {
               </select>
             </div>
 
-            {/* Media Asset Image upload */}
+            {/* Media Image upload */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Cover Image File</label>
               <div className="relative border-2 border-dashed border-stone-200 hover:border-[#800020] rounded-xl transition bg-stone-50 p-4 text-center cursor-pointer">
@@ -156,118 +186,141 @@ export default function NewsCardGenerator() {
                 />
                 <div className="flex flex-col items-center space-y-1 text-stone-500">
                   <ImageIcon className="h-6 w-6 text-stone-400" />
-                  <span className="text-xs font-medium">Click to select file content image</span>
-                  <span className="text-[10px] text-stone-400 font-mono">PNG, JPG, WEBP assets</span>
+                  <span className="text-xs font-medium">Click to select news image</span>
                 </div>
               </div>
             </div>
 
-            {/* Headline input field */}
+            {/* Headline Input */}
             <div>
-              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Headline Banner Text</label>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Headline Text</label>
               <textarea
                 rows={3}
                 value={headline}
                 onChange={(e) => setHeadline(e.target.value)}
                 maxLength={140}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020] leading-relaxed resize-none"
-                placeholder="শিরোনামটি টাইপ করুন..."
               />
-              <span className="text-[10px] text-stone-400 font-mono float-right mt-1">{headline.length}/140 characters</span>
             </div>
 
-            {/* Image Credit string input field */}
+            {/* Subhead Input */}
             <div>
-              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Photo Credit Attribution</label>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Sub-Headline Text / Summary</label>
+              <textarea
+                rows={3}
+                value={subHeadline}
+                onChange={(e) => setSubHeadline(e.target.value)}
+                maxLength={200}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020] leading-relaxed resize-none text-xs"
+              />
+            </div>
+
+            {/* Photo Credit */}
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Photo Credit</label>
               <input
                 type="text"
                 value={photoCredit}
                 onChange={(e) => setPhotoCredit(e.target.value)}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020]"
-                placeholder="যেমন, ছবি: সংগৃহীত"
               />
             </div>
           </div>
 
-          {/* --- RIGHT COL: LIVE CANVAS ENGINE PREVIEW (7 Cols) --- */}
-          <div className="lg:col-span-7 flex flex-col items-center">
-            <div className="w-full max-w-md sticky top-24">
-              <span className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center space-x-2 mb-3">
+          {/* --- RIGHT COL: LIVE CANVAS ENGINE PREVIEW (Responsive Scale Grid) --- */}
+          <div className="lg:col-span-7 flex flex-col items-center justify-center">
+            <div className="w-full flex flex-col items-center">
+              <span className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center space-x-2 mb-3 self-start lg:ml-12">
                 <Eye className="h-3.5 w-3.5 text-[#800020]" />
-                <span>Live WYSIWYG Canvas Preview</span>
+                <span>Live Scaled Canvas Preview (4:5 Ratio)</span>
               </span>
 
-              {/* Render Wrapper Node targeted by html-to-image converter */}
-              <div 
-                ref={cardRef}
-                className={`w-[450px] h-[580px] flex flex-col justify-between shadow-2xl overflow-hidden relative font-sans transition-all duration-300 select-none bg-white`}
-                style={{ minWidth: '450px', minHeight: '580px' }}
-              >
+              {/* Viewport scaling wrapper to cleanly hold 1080x1350 node inside web viewport grids */}
+              <div className="w-[360px] h-[450px] relative border border-stone-300 rounded-2xl shadow-2xl overflow-hidden bg-stone-900">
                 
-                {/* UP-SECTION: Asset Image Area Cover box config */}
-                <div className="w-full h-[330px] relative bg-stone-900 overflow-hidden flex items-center justify-center group">
+                {/* Real Output Canvas Node: Absolute 1080x1350 scaled to 0.3333 match viewports */}
+                <div 
+                  ref={cardRef}
+                  className="w-[1080px] h-[1350px] absolute top-0 left-0 origin-top-left flex flex-col justify-end select-none bg-stone-950"
+                  style={{ transform: 'scale(0.333333)' }}
+                >
+                  {/* Photo Cover Asset Layer */}
                   {imagePreview ? (
                     <img 
                       src={imagePreview} 
-                      alt="News visual setup" 
-                      className="w-full h-full object-cover" 
+                      alt="News graphic" 
+                      className="absolute inset-0 w-full h-full object-cover object-top"
                     />
                   ) : (
-                    <div className="text-stone-500 text-xs font-mono tracking-wider flex flex-col items-center space-y-2">
-                      <ImageIcon className="h-10 w-10 text-stone-700 stroke-[1.2]" />
-                      <span>NO COVER IMAGE SELECTED</span>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-stone-600 font-mono text-2xl space-y-4">
+                      <ImageIcon className="h-24 w-24 text-stone-800 stroke-[1]" />
+                      <span>NO COVER IMAGE LOADED</span>
                     </div>
                   )}
 
-                  {/* Dynamic Photo Credit absolute indicator inside graphic */}
+                  {/* Top-Left Absolute Credit Tag */}
                   {photoCredit && (
-                    <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-sm text-white px-2.5 py-1 rounded text-[10px] font-medium tracking-wide">
+                    <div className="absolute top-10 left-10 z-20 text-white/80 text-xl font-medium tracking-wide drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] bg-black/30 px-4 py-1.5 rounded-lg backdrop-blur-sm">
                       {photoCredit}
                     </div>
                   )}
-                </div>
 
-                {/* BOTTOM-SECTION: Theme Custom dynamic content card structure */}
-                <div 
-                  className={`w-full h-[250px] p-6 flex flex-col justify-between relative border-t-4 ${
-                    selectedVariant === 'black' 
-                      ? 'bg-[#121212] border-[#800020] text-white' 
-                      : 'bg-white border-[#800020] text-stone-950'
-                  }`}
-                >
-                  {/* Category string text flag configuration mapping */}
-                  <div>
-                    <span className="text-[11px] font-black tracking-widest text-[#800020] bg-[#800020]/10 px-2.5 py-1 rounded-md uppercase">
-                      {category}
-                    </span>
+                  {/* Dynamic Dark Gradient Backdrop Cover for Text visibility */}
+                  <div 
+                    className={`w-full pt-80 pb-16 px-14 relative z-10 flex flex-col justify-end ${
+                      selectedVariant === 'white' 
+                        ? 'bg-gradient-to-t from-white via-white/95 to-transparent text-stone-950' 
+                        : 'bg-gradient-to-t from-[#090d14] via-[#090d14]/95 to-transparent text-white'
+                    }`}
+                  >
+                    {/* Category Label */}
+                    <div className="text-[#c1121f] font-black text-4xl uppercase tracking-wider mb-3">
+                      {getCategoryLabel(category)}
+                    </div>
                     
-                    {/* Render targeted Bangla input layout text headline */}
-                    <h2 className="text-xl font-bold leading-snug mt-4 text-justify tracking-wide font-sans line-clamp-4">
+                    {/* Time Stamp */}
+                    <div className="text-xl font-medium tracking-wide mb-6 opacity-70">
+                      {getBanglaDate()}
+                    </div>
+
+                    {/* Bold Standard News Headline */}
+                    <h2 className="text-[52px] font-extrabold leading-[1.25] tracking-wide text-left mb-6 font-sans">
                       {headline || 'শিরোনাম অনুপস্থিত...'}
                     </h2>
-                  </div>
 
-                  {/* Brand signature branding assets baseline anchor */}
-                  <div className="flex items-center justify-between pt-2 border-t border-stone-200/20">
-                    <span className="text-[10px] font-semibold text-stone-400 font-mono uppercase tracking-widest">
-                      Internal Wire Network
-                    </span>
-                    
-                    {/* Secondary PNG branding configuration requested structure */}
-                    <div className="relative h-7 w-24">
-                      <Image 
-                        src="/logo2.png" 
-                        alt="TongerKhobor Layout Asset" 
-                        fill
-                        priority
-                        className={`object-contain ${selectedVariant === 'black' ? 'brightness-0 invert' : ''}`}
-                      />
+                    {/* Subhead Context Lines */}
+                    <p className="text-2xl leading-relaxed text-left opacity-80 font-normal line-clamp-3 mb-10">
+                      {subHeadline}
+                    </p>
+
+                    {/* Footer Identity row layout */}
+                    <div className="flex items-center justify-between pt-8 border-t border-stone-500/30">
+                      <span className="text-lg font-semibold text-stone-400 font-mono uppercase tracking-widest">
+                        TongerKhobor Digital Network
+                      </span>
+                      
+                      {/* Brand Dynamic Asset */}
+                      <div className="relative h-14 w-48">
+                        <Image 
+                          src="/logo2.png" 
+                          alt="Layout Branding Asset" 
+                          fill
+                          priority
+                          className={`object-contain ${selectedVariant === 'black' ? 'brightness-0 invert' : ''}`}
+                        />
+                      </div>
                     </div>
                   </div>
+
+                  {/* Top blend bar shadow */}
+                  <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-black/50 to-transparent pointer-events-none z-10" />
                 </div>
 
               </div>
-              <p className="text-center text-xs text-stone-400 font-mono mt-4">Canvas Target Spec: 450x580 pixels (High Density DPI output)</p>
+
+              <p className="text-center text-xs text-stone-400 font-mono mt-4">
+                Output Frame Matrix: 1080 × 1350 pixels (Standard 4:5 Feed Layout)
+              </p>
             </div>
           </div>
 
