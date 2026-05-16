@@ -92,13 +92,13 @@ export default function InternalDashboard() {
           
           {/* Header Brand Branding Section */}
           <div className="bg-gradient-to-r from-[#600018] to-[#800020] p-8 text-center text-white flex flex-col items-center">
-            {/* PNG Logo Integration */}
-            <div className="mb-3 transform transition hover:scale-105 duration-200">
+            {/* PNG Logo Integration - Resized for optimal clarity */}
+            <div className="mb-4 transform transition hover:scale-105 duration-200 drop-shadow-md">
               <Image 
                 src="/logo.png" 
                 alt="TongerKhobor Logo" 
-                width={64} 
-                height={64} 
+                width={110} 
+                height={110} 
                 className="object-contain"
                 priority
               />
@@ -192,13 +192,13 @@ export default function InternalDashboard() {
             {/* Logo Section */}
             <div className="flex items-center space-x-3">
               {/* PNG Logo Integration inside Dashboard Navbar */}
-              <div className="p-1.5 bg-white/10 rounded-lg flex items-center justify-center">
+              <div className="p-1 bg-white/10 rounded-lg flex items-center justify-center">
                 <Image 
                   src="/logo.png" 
                   alt="TongerKhobor Logo" 
-                  width={34} 
-                  height={34} 
-                  className="object-contain inverted-logo-brightness"
+                  width={42} 
+                  height={42} 
+                  className="object-contain"
                 />
               </div>
               <div>
