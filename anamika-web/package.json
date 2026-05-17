@@ -16,7 +16,7 @@
     "react-dom": "19.2.4",
     "@vercel/analytics": "latest",
     "html-to-image": "^1.11.11",
-    "@google/genai": "^0.1.2"
+    "@google/genai": "^0.1.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
