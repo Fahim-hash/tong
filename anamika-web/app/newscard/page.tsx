@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import Link from 'next/link';
+import Link from 'react-link';
 import Image from 'next/image';
 import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy, Check } from 'lucide-react';
 
@@ -59,7 +59,7 @@ export default function NewsCardGenerator() {
     }
   };
 
-  // Safe Canvas Base-Download Engine (Fix for html-to-image failure)
+  // Upgraded Download Engine matching the Tailwind layout exactly
   const handleDownloadCard = () => {
     setIsExporting(true);
     
@@ -70,30 +70,33 @@ export default function NewsCardGenerator() {
       return;
     }
 
-    // Set standard High-Res dimensions matching your element frame
     const W = 1080;
     const H = 1350;
     canvas.width = W;
     canvas.height = H;
 
-    // 1. Draw Fallback/Base Background
+    // Base background setup
     ctx.fillStyle = selectedVariant === 'white' ? '#ffffff' : '#090d14';
     ctx.fillRect(0, 0, W, H);
 
     const drawTextAndLayers = () => {
-      // 2. Draw Bottom Mask Gradient (Matches standard layout overlay)
-      const grad = ctx.createLinearGradient(0, H - 900, 0, H);
+      // 1. Draw Bottom Gradient Overlay (Matches Tailwind 'pt-80' relative blending height)
+      const gradientStartPoint = H - 980; 
+      const grad = ctx.createLinearGradient(0, gradientStartPoint, 0, H);
+      
       if (selectedVariant === 'white') {
         grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        grad.addColorStop(0.3, 'rgba(255, 255, 255, 0.95)');
+        grad.addColorStop(0.35, 'rgba(255, 255, 255, 0.98)');
+        grad.addColorStop(0.5, '#ffffff');
         grad.addColorStop(1, '#ffffff');
       } else {
         grad.addColorStop(0, 'rgba(9, 13, 20, 0)');
-        grad.addColorStop(0.3, 'rgba(9, 13, 20, 0.95)');
+        grad.addColorStop(0.35, 'rgba(9, 13, 20, 0.98)');
+        grad.addColorStop(0.5, '#090d14');
         grad.addColorStop(1, '#090d14');
       }
       ctx.fillStyle = grad;
-      ctx.fillRect(0, H - 900, W, 900);
+      ctx.fillRect(0, gradientStartPoint, W, H - gradientStartPoint);
 
       // Top Shadow Overlay
       const topGrad = ctx.createLinearGradient(0, 0, 0, 160);
@@ -102,41 +105,41 @@ export default function NewsCardGenerator() {
       ctx.fillStyle = topGrad;
       ctx.fillRect(0, 0, W, 160);
 
-      // 3. Render Photo Credits (Top Left Box Overlay)
+      // 2. Render Photo Credits
       if (photoCredit) {
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.font = '500 20px Arial, sans-serif';
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.font = '500 20px SolaimanLipi, SiyamRupali, Arial, sans-serif';
         const textWidth = ctx.measureText(photoCredit).width;
         
-        // Draw small background for text
         ctx.beginPath();
         ctx.roundRect(40, 40, textWidth + 32, 45, 8);
         ctx.fill();
         
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillText(photoCredit, 56, 70);
+        ctx.fillText(photoCredit, 56, 69);
       }
 
-      // 4. Content Typography Data Calculations
+      // 3. Typography Positioning Engine
       const margin = 56;
-      let textY = 910;
+      let textY = 820; // Anchored accurately to prevent vertical drift
 
       // Category Block
       ctx.fillStyle = '#c1121f';
-      ctx.font = '900 36px Arial, sans-serif';
+      ctx.font = '900 40px SolaimanLipi, SiyamRupali, Arial, sans-serif';
       ctx.fillText(getCategoryLabel(category), margin, textY);
 
       // Date Block
-      textY += 55;
+      textY += 50;
       ctx.fillStyle = selectedVariant === 'white' ? '#444444' : '#94a3b8';
-      ctx.font = '500 22px Arial, sans-serif';
+      ctx.font = '500 22px SolaimanLipi, SiyamRupali, Arial, sans-serif';
       ctx.fillText(getBanglaDate(), margin, textY);
 
-      // Headline Engine with multi-line auto-wrap tracking
-      textY += 95;
+      // Headline System
+      textY += 75;
       ctx.fillStyle = selectedVariant === 'white' ? '#0c0a09' : '#ffffff';
       const hSize = 52;
-      ctx.font = `800 ${hSize}px Arial, sans-serif`;
+      ctx.font = `800 ${hSize}px SolaimanLipi, SiyamRupali, Arial, sans-serif`;
+      ctx.textBaseline = 'top';
 
       const wrapText = (text: string, maxWidth: number) => {
         const words = text.split(' ');
@@ -158,38 +161,40 @@ export default function NewsCardGenerator() {
       const headlineLines = wrapText(headline || 'শিরোনাম অনুপস্থিত...', W - (margin * 2));
       headlineLines.forEach((line) => {
         ctx.fillText(line, margin, textY);
-        textY += hSize * 1.3;
+        textY += hSize * 1.35;
       });
 
       // Subheadline System
       textY += 15;
       ctx.fillStyle = selectedVariant === 'white' ? '#292524' : '#cbd5e1';
-      ctx.font = '400 24px Arial, sans-serif';
+      ctx.font = '400 25px SolaimanLipi, SiyamRupali, Arial, sans-serif';
       const subLines = wrapText(subHeadline, W - (margin * 2));
-      subLines.slice(0, 3).forEach((line) => { // Maximum 3 vertical line clamp
+      subLines.slice(0, 3).forEach((line) => {
         ctx.fillText(line, margin, textY);
-        textY += 38;
+        textY += 40;
       });
 
-      // Bottom Metadata Row Base Line
-      ctx.strokeStyle = 'rgba(120, 120, 120, 0.2)';
+      // Reset text baselines for footer alignment
+      ctx.textBaseline = 'alphabetical';
+
+      // Footer divider line
+      ctx.strokeStyle = selectedVariant === 'white' ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(margin, H - 120);
-      ctx.lineTo(W - margin, H - 120);
+      ctx.moveTo(margin, H - 130);
+      ctx.lineTo(W - margin, H - 130);
       ctx.stroke();
 
-      // Meta Network Branding Text
-      ctx.fillStyle = '#a8a29e';
+      // Brand text
+      ctx.fillStyle = selectedVariant === 'white' ? '#78716c' : '#a8a29e';
       ctx.font = '600 18px monospace';
-      ctx.fillText("TONGERKHOBOR DIGITAL NETWORK", margin, H - 70);
+      ctx.fillText("TONGERKHOBOR DIGITAL NETWORK", margin, H - 75);
 
-      // 5. Draw Dynamic Branding Assets / Logos Safely
+      // 4. Render Dynamic Branding Asset Logotypes securely
       const logoImg = new window.Image();
       logoImg.crossOrigin = "anonymous";
       logoImg.src = "/logo2.png";
       logoImg.onload = () => {
-        // Create an offscreen canvas to process filters/invert adjustments
         const offscreenCanvas = document.createElement('canvas');
         offscreenCanvas.width = logoImg.width;
         offscreenCanvas.height = logoImg.height;
@@ -198,7 +203,6 @@ export default function NewsCardGenerator() {
         if (oCtx) {
           oCtx.drawImage(logoImg, 0, 0);
           if (selectedVariant === 'black') {
-            // Apply programmatical layout invert rules for clear white matching
             oCtx.globalCompositeOperation = 'difference';
             oCtx.fillStyle = 'white';
             oCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
@@ -206,10 +210,17 @@ export default function NewsCardGenerator() {
           
           const logoW = 192;
           const logoH = 56;
-          ctx.drawImage(offscreenCanvas, W - margin - logoW, H - 98, logoW, logoH);
+          ctx.drawImage(offscreenCanvas, W - margin - logoW, H - 105, logoW, logoH);
         }
 
-        // Finalize Download Event Dispatcher
+        finalizeDownload();
+      };
+
+      logoImg.onerror = () => {
+        finalizeDownload();
+      };
+
+      function finalizeDownload() {
         const dataUrl = canvas.toDataURL('image/png', 1.0);
         const link = document.createElement('a');
         link.download = `TongerKhobor-${category}-${Date.now()}.png`;
@@ -218,20 +229,10 @@ export default function NewsCardGenerator() {
         link.click();
         document.body.removeChild(link);
         setIsExporting(false);
-      };
-
-      logoImg.onerror = () => {
-        // In case logo path misses or gives 404, download still completes securely
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
-        const link = document.createElement('a');
-        link.download = `TongerKhobor-${category}-${Date.now()}.png`;
-        link.href = dataUrl;
-        link.click();
-        setIsExporting(false);
-      };
+      }
     };
 
-    // Process main cover photo rendering with precise cover cropping metrics
+    // 5. Handle Cover Processing with precise cover cropping metrics
     if (imagePreview) {
       const mainImg = new window.Image();
       mainImg.src = imagePreview;
@@ -245,9 +246,10 @@ export default function NewsCardGenerator() {
           sx = (dW - W) / 2;
         } else {
           dH = W / imgRatio;
+          sy = (dH - H) / 2; // Center-align vertically
         }
 
-        ctx.drawImage(mainImg, -sx, 0, dW, dH);
+        ctx.drawImage(mainImg, -sx, -sy, dW, dH);
         drawTextAndLayers();
       };
     } else {
@@ -258,7 +260,7 @@ export default function NewsCardGenerator() {
   // AI Caption Generator Function
   const handleGenerateCaption = async () => {
     if (!headline || headline === 'এখানে আপনার ব্রেকিং নিউজ বা আকর্ষণীয় মূল হেডলাইনটি লিখুন') {
-      alert('দয়া করে আগে একটি নিউজ হেডলাইন লিখুন।');
+      alert('দয়া করে আগে একটি নিউজ হেডলাইন লিখুন।');
       return;
     }
 
@@ -280,7 +282,7 @@ export default function NewsCardGenerator() {
       if (data.caption) {
         setGeneratedCaption(data.caption);
       } else {
-        setGeneratedCaption('ক্যাপশন জেনারেট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+        setGeneratedCaption('ক্যাপশন জেনারেট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
       }
     } catch (error) {
       console.error(error);
@@ -299,7 +301,7 @@ export default function NewsCardGenerator() {
 
   const getCategoryLabel = (cat: Category) => {
     const labels = {
-      NATIONAL: 'জাতীয়',
+      NATIONAL: 'জাতীয়',
       INTERNATIONAL: 'আন্তর্জাতিক',
       SPORTS: 'খেলাধুলা',
       POLITICS: 'রাজনীতি',
@@ -311,7 +313,6 @@ export default function NewsCardGenerator() {
 
   return (
     <div className="min-h-screen bg-stone-100 font-sans text-stone-800 pb-12">
-      {/* Top Header Controls bar */}
       <div className="bg-white border-b border-stone-200 sticky top-0 z-50 px-4 py-4 sm:px-6 shadow-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -338,11 +339,10 @@ export default function NewsCardGenerator() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* --- LEFT COL: FORM INTERFACES CONTROLS --- */}
+          {/* LEFT COL */}
           <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-5">
             <h2 className="text-sm font-bold text-stone-900 tracking-wider uppercase border-b border-stone-100 pb-3">Card Customizer</h2>
             
-            {/* Template Variant Switcher */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Card Style Template</label>
               <div className="grid grid-cols-2 gap-2">
@@ -360,24 +360,9 @@ export default function NewsCardGenerator() {
                 >
                   Black Version
                 </button>
-                <button
-                  type="button"
-                  disabled
-                  className="py-2 px-3 text-xs font-medium rounded-xl border bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed flex items-center justify-center space-x-1"
-                >
-                  <span>General Mode (OFF)</span>
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className="py-2 px-3 text-xs font-medium rounded-xl border bg-stone-50 text-stone-400 border-stone-200 cursor-not-allowed flex items-center justify-center space-x-1"
-                >
-                  <span>Tong Version (OFF)</span>
-                </button>
               </div>
             </div>
 
-            {/* Category selection */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">News Category</label>
               <select
@@ -385,7 +370,7 @@ export default function NewsCardGenerator() {
                 onChange={(e) => setCategory(e.target.value as Category)}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020]"
               >
-                <option value="NATIONAL">National (জাতীয়)</option>
+                <option value="NATIONAL">National (জাতীয়)</option>
                 <option value="INTERNATIONAL">International (আন্তর্জাতিক)</option>
                 <option value="SPORTS">Sports (খেলাধুলা)</option>
                 <option value="POLITICS">Politics (রাজনীতি)</option>
@@ -394,7 +379,6 @@ export default function NewsCardGenerator() {
               </select>
             </div>
 
-            {/* Media Image upload */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Cover Image File</label>
               <div className="relative border-2 border-dashed border-stone-200 hover:border-[#800020] rounded-xl transition bg-stone-50 p-4 text-center cursor-pointer">
@@ -411,7 +395,6 @@ export default function NewsCardGenerator() {
               </div>
             </div>
 
-            {/* Headline Input */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Headline Text</label>
               <textarea
@@ -423,7 +406,6 @@ export default function NewsCardGenerator() {
               />
             </div>
 
-            {/* Subhead Input */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Sub-Headline Text / Summary</label>
               <textarea
@@ -435,7 +417,6 @@ export default function NewsCardGenerator() {
               />
             </div>
 
-            {/* Photo Credit */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Photo Credit</label>
               <input
@@ -446,7 +427,6 @@ export default function NewsCardGenerator() {
               />
             </div>
 
-            {/* --- AI CAPTION GENERATOR BUTTON & DISPLAY --- */}
             <div className="border-t border-stone-200 pt-4 space-y-3">
               <button
                 type="button"
@@ -480,7 +460,7 @@ export default function NewsCardGenerator() {
             </div>
           </div>
 
-          {/* --- RIGHT COL: LIVE CANVAS ENGINE PREVIEW --- */}
+          {/* RIGHT COL: LIVE CANVAS ENGINE PREVIEW */}
           <div className="lg:col-span-7 flex flex-col items-center justify-center">
             <div className="w-full flex flex-col items-center">
               <span className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center space-x-2 mb-3 self-start lg:ml-12">
@@ -489,7 +469,6 @@ export default function NewsCardGenerator() {
               </span>
 
               <div className="w-[360px] h-[450px] relative border border-stone-300 rounded-2xl shadow-2xl overflow-hidden bg-stone-900">
-                
                 <div 
                   ref={cardRef}
                   className="w-[1080px] h-[1350px] absolute top-0 left-0 origin-top-left flex flex-col justify-end select-none bg-stone-950"
@@ -499,7 +478,7 @@ export default function NewsCardGenerator() {
                     <img 
                       src={imagePreview} 
                       alt="News graphic" 
-                      className="absolute inset-0 w-full h-full object-cover object-top"
+                      className="absolute inset-0 w-full h-full object-cover object-center"
                     />
                   ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-stone-600 font-mono text-2xl space-y-4">
@@ -515,10 +494,10 @@ export default function NewsCardGenerator() {
                   )}
 
                   <div 
-                    className={`w-full pt-80 pb-16 px-14 relative z-10 flex flex-col justify-end ${
+                    className={`w-full pt-96 pb-16 px-14 relative z-10 flex flex-col justify-end ${
                       selectedVariant === 'white' 
-                        ? 'bg-gradient-to-t from-white via-white/95 to-transparent text-stone-950' 
-                        : 'bg-gradient-to-t from-[#090d14] via-[#090d14]/95 to-transparent text-white'
+                        ? 'bg-gradient-to-t from-white via-white/98 to-transparent text-stone-950' 
+                        : 'bg-gradient-to-t from-[#090d14] via-[#090d14]/98 to-transparent text-white'
                     }`}
                   >
                     <div className="text-[#c1121f] font-black text-4xl uppercase tracking-wider mb-3">
@@ -529,7 +508,7 @@ export default function NewsCardGenerator() {
                       {getBanglaDate()}
                     </div>
 
-                    <h2 className="text-[52px] font-extrabold leading-[1.25] tracking-wide text-left mb-6 font-sans">
+                    <h2 className="text-[52px] font-extrabold leading-[1.35] tracking-wide text-left mb-6 font-sans">
                       {headline || 'শিরোনাম অনুপস্থিত...'}
                     </h2>
 
@@ -557,7 +536,6 @@ export default function NewsCardGenerator() {
 
                   <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-black/50 to-transparent pointer-events-none z-10" />
                 </div>
-
               </div>
 
               <p className="text-center text-xs text-stone-400 font-mono mt-4">
