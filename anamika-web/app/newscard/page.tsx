@@ -7,12 +7,14 @@ import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy
 
 type Category = 'NATIONAL' | 'INTERNATIONAL' | 'SPORTS' | 'POLITICS' | 'ECONOMY' | 'SOCIAL';
 type Variant = 'white' | 'black' | 'general' | 'tong';
+type LangMode = 'BN' | 'EN';
 
 export default function NewsCardGenerator() {
   // Input Form States
+  const [langMode, setLangMode] = useState<LangMode>('BN'); // ডিফল্ট বাংলা মোড
   const [category, setCategory] = useState<Category>('NATIONAL');
   const [headline, setHeadline] = useState('এখানে আপনার [b]ব্রেকিং নিউজ[/b] বা আকর্ষণীয় মূল হেডলাইনটি লিখুন');
-  const [subHeadline, setSubHeadline] = useState('এখানেসংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
+  const [subHeadline, setSubHeadline] = useState('এখানে সংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
   const [photoCredit, setPhotoCredit] = useState('ছবি: টংয়েরখবর');
   const [selectedVariant, setSelectedVariant] = useState<Variant>('black');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -25,28 +27,11 @@ export default function NewsCardGenerator() {
 
   const headlineRef = useRef<HTMLTextAreaElement>(null);
 
-  // Improved Auto Language Detection Logic (90% Threshold)
-  const detectLanguage = (text: string): 'EN' | 'BN' => {
-    const cleanText = text.replace(/\[\/?(b|i)\]/g, '').replace(/\s+/g, '');
-    if (!cleanText) return 'BN';
-
-    const englishChars = (cleanText.match(/[a-zA-Z]/g) || []).length;
-    const banglaChars = (cleanText.match(/[\u0980-\u09FF]/g) || []).length;
-    const totalAlpha = englishChars + banglaChars;
-
-    if (totalAlpha === 0) return 'BN';
-
-    const englishRatio = englishChars / totalAlpha;
-    return englishRatio >= 0.9 ? 'EN' : 'BN';
-  };
-
-  const isEnglishMode = detectLanguage(headline);
-
-  // Dynamic Date Engine based on selected language mode
+  // Dynamic Date Engine based on explicit language mode
   const getDynamicDate = () => {
     const date = new Date();
     
-    if (isEnglishMode) {
+    if (langMode === 'EN') {
       return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
     }
 
@@ -150,7 +135,7 @@ export default function NewsCardGenerator() {
 
   // Live UI Preview Parser
   const renderStyledPreviewText = (rawText: string) => {
-    if (!rawText) return isEnglishMode ? 'Headline missing...' : 'শিরোনাম অনুপস্থিত...';
+    if (!rawText) return langMode === 'EN' ? 'Headline missing...' : 'শিরোনাম অনুপস্থিত...';
     const tokens = rawText.split(/(\[b\].*?\[\/b\]|\[i\].*?\[\/i\])/g);
     return tokens.map((token, idx) => {
       if (token.startsWith('[b]') && token.endsWith('[/b]')) {
@@ -164,7 +149,7 @@ export default function NewsCardGenerator() {
   };
 
   const getCategoryLabel = (cat: Category) => {
-    if (isEnglishMode) return cat;
+    if (langMode === 'EN') return cat;
 
     const labels = {
       NATIONAL: 'জাতীয়',
@@ -177,7 +162,7 @@ export default function NewsCardGenerator() {
     return labels[cat];
   };
 
-  // Upgraded Export Layout Engine (Fixed Overlap & Removed Branding Line)
+  // Upgraded Export Layout Engine (Fixed Overlap, Explicit Language Labels & No Branding Text)
   const handleDownloadCard = () => {
     setIsExporting(true);
     
@@ -237,9 +222,9 @@ export default function NewsCardGenerator() {
       const margin = 56;
       let textY = 820; 
 
-      // Category Block
+      // Category Block (Uses Explicit langMode)
       ctx.fillStyle = '#c1121f';
-      ctx.font = isEnglishMode 
+      ctx.font = langMode === 'EN' 
         ? '900 36px Inter, system-ui, sans-serif'
         : '900 40px SolaimanLipi, SiyamRupali, Arial, sans-serif';
       ctx.textBaseline = 'top';
@@ -264,7 +249,7 @@ export default function NewsCardGenerator() {
         let currentLineIndex = 0;
 
         const getFontForType = (type: 'bold' | 'italic' | 'regular') => {
-          const base = isEnglishMode ? "Inter, system-ui, sans-serif" : "SolaimanLipi, SiyamRupali, Arial, sans-serif";
+          const base = langMode === 'EN' ? "Inter, system-ui, sans-serif" : "SolaimanLipi, SiyamRupali, Arial, sans-serif";
           if (type === 'bold') return `800 ${hSize}px ${base}`; 
           if (type === 'italic') return `italic 800 ${hSize}px ${base}`;
           return `800 ${hSize}px ${base}`;
@@ -315,7 +300,7 @@ export default function NewsCardGenerator() {
         return currentY;
       };
 
-      textY = renderRichHeadline(headline || (isEnglishMode ? 'Headline missing...' : 'শিরোনাম অনুপস্থিত...'), textY);
+      textY = renderRichHeadline(headline || (langMode === 'EN' ? 'Headline missing...' : 'শিরোনাম অনুপস্থিত...'), textY);
 
       // Subheadline System
       const wrapPlainText = (text: string, maxWidth: number) => {
@@ -339,7 +324,7 @@ export default function NewsCardGenerator() {
 
       textY += 10;
       ctx.fillStyle = selectedVariant === 'white' ? '#292524' : '#cbd5e1';
-      ctx.font = isEnglishMode ? '400 24px Inter, system-ui, sans-serif' : '400 25px SolaimanLipi, SiyamRupali, Arial, sans-serif';
+      ctx.font = langMode === 'EN' ? '400 24px Inter, system-ui, sans-serif' : '400 25px SolaimanLipi, SiyamRupali, Arial, sans-serif';
       
       const subLines = wrapPlainText(subHeadline, maxLineWidth);
       subLines.slice(0, 2).forEach((line) => {
@@ -347,7 +332,7 @@ export default function NewsCardGenerator() {
         textY += 42;
       });
 
-      // Cleaner Footer System
+      // Cleaner Footer System (Line is there, text is wiped out)
       ctx.strokeStyle = selectedVariant === 'white' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -450,6 +435,27 @@ export default function NewsCardGenerator() {
           <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-5">
             <h2 className="text-sm font-bold text-stone-900 tracking-wider uppercase border-b border-stone-100 pb-3">Card Customizer</h2>
             
+            {/* NEW EXPLICIT LANGUAGE MODE SELECTOR */}
+            <div>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Card Language (ভাষা)</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLangMode('BN')}
+                  className={`py-2 px-3 text-xs font-semibold rounded-xl border transition ${langMode === 'BN' ? 'bg-amber-500 text-stone-950 border-amber-500' : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'}`}
+                >
+                  🇧🇩 বাংলা মোড (Bangla)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLangMode('EN')}
+                  className={`py-2 px-3 text-xs font-semibold rounded-xl border transition ${langMode === 'EN' ? 'bg-amber-500 text-stone-950 border-amber-500' : 'bg-stone-50 text-stone-700 border-stone-200 hover:bg-stone-100'}`}
+                >
+                  🇬🇧 English Mode
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Card Style Template</label>
               <div className="grid grid-cols-2 gap-2 mb-2">
@@ -468,25 +474,6 @@ export default function NewsCardGenerator() {
                   Black Version
                 </button>
               </div>
-              
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  disabled
-                  className="py-2 px-3 text-xs font-medium rounded-xl border border-dashed border-stone-200 text-stone-400 bg-stone-50/50 cursor-not-allowed flex items-center justify-between"
-                >
-                  <span>General Version</span>
-                  <span className="text-[9px] bg-stone-200 text-stone-500 px-1 py-0.5 rounded">OFF</span>
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  className="py-2 px-3 text-xs font-medium rounded-xl border border-dashed border-stone-200 text-stone-400 bg-stone-50/50 cursor-not-allowed flex items-center justify-between"
-                >
-                  <span>Tong Version</span>
-                  <span className="text-[9px] bg-stone-200 text-stone-500 px-1 py-0.5 rounded">OFF</span>
-                </button>
-              </div>
             </div>
 
             <div>
@@ -496,12 +483,12 @@ export default function NewsCardGenerator() {
                 onChange={(e) => setCategory(e.target.value as Category)}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020]"
               >
-                <option value="NATIONAL">National {isEnglishMode ? '' : '(জাতীয়)'}</option>
-                <option value="INTERNATIONAL">International {isEnglishMode ? '' : '(আন্তর্জাতিক)'}</option>
-                <option value="SPORTS">Sports {isEnglishMode ? '' : '(খেলাধুলা)'}</option>
-                <option value="POLITICS">Politics {isEnglishMode ? '' : '(রাজনীতি)'}</option>
-                <option value="ECONOMY">Economy {isEnglishMode ? '' : '(অর্থনীতি)'}</option>
-                <option value="SOCIAL">Social {isEnglishMode ? '' : '(সমাজ)'}</option>
+                <option value="NATIONAL">National {langMode === 'BN' ? '(জাতীয়)' : ''}</option>
+                <option value="INTERNATIONAL">International {langMode === 'BN' ? '(আন্তর্জাতিক)' : ''}</option>
+                <option value="SPORTS">Sports {langMode === 'BN' ? '(খেলাধুলা)' : ''}</option>
+                <option value="POLITICS">Politics {langMode === 'BN' ? '(রাজনীতি)' : ''}</option>
+                <option value="ECONOMY">Economy {langMode === 'BN' ? '(অর্থনীতি)' : ''}</option>
+                <option value="SOCIAL">Social {langMode === 'BN' ? '(সমাজ)' : ''}</option>
               </select>
             </div>
 
@@ -553,11 +540,8 @@ export default function NewsCardGenerator() {
                 onChange={(e) => setHeadline(e.target.value)}
                 maxLength={200}
                 className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020] leading-relaxed resize-none font-mono text-xs"
-                placeholder="Highlight words and click Color or Italic to style like Canva..."
+                placeholder="Highlight words and click Color or Italic to style..."
               />
-              <div className="mt-1 flex justify-between text-[10px] text-stone-400 font-mono">
-                <span>System Mode: {isEnglishMode ? '🇬🇧 ENGLISH 90%+' : '🇧🇩 BANGLA MODE'}</span>
-              </div>
             </div>
 
             <div>
