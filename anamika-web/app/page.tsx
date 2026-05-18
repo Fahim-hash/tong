@@ -95,7 +95,7 @@ export default function InternalDashboard() {
             {/* PNG Logo Integration - Resized for optimal clarity */}
             <div className="mb-4 transform transition hover:scale-105 duration-200 drop-shadow-md">
               <Image 
-                src="/logo.png" 
+                src="/logo2.png" 
                 alt="TongerKhobor Logo" 
                 width={110} 
                 height={110} 
