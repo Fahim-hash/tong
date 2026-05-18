@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import Link from 'next/link';
+import Link from 'react';
 import Image from 'next/image';
 import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy, Check, Type, Italic } from 'lucide-react';
 
@@ -11,7 +11,7 @@ type LangMode = 'BN' | 'EN';
 
 export default function NewsCardGenerator() {
   // Input Form States
-  const [langMode, setLangMode] = useState<LangMode>('BN'); // ডিফল্ট বাংলা মোড
+  const [langMode, setLangMode] = useState<LangMode>('BN'); 
   const [category, setCategory] = useState<Category>('NATIONAL');
   const [headline, setHeadline] = useState('এখানে আপনার [b]ব্রেকিং নিউজ[/b] বা আকর্ষণীয় মূল হেডলাইনটি লিখুন');
   const [subHeadline, setSubHeadline] = useState('এখানে সংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
@@ -27,7 +27,7 @@ export default function NewsCardGenerator() {
 
   const headlineRef = useRef<HTMLTextAreaElement>(null);
 
-  // Dynamic Date Engine based on explicit language mode
+  // Dynamic Date Engine
   const getDynamicDate = () => {
     const date = new Date();
     
@@ -66,7 +66,6 @@ export default function NewsCardGenerator() {
     }
   };
 
-  // Generate AI Caption Function
   const handleGenerateCaption = async () => {
     if (!headline || headline.trim() === '') {
       alert('দয়া করে আগে একটি নিউজ হেডলাইন লিখুন।');
@@ -91,7 +90,6 @@ export default function NewsCardGenerator() {
     }
   };
 
-  // Copy Caption Function
   const handleCopyCaption = async () => {
     if (!generatedCaption) return;
     try {
@@ -103,7 +101,6 @@ export default function NewsCardGenerator() {
     }
   };
 
-  // Canva Style Wrapper Tool (Color & Italic)
   const applyStyleToSelection = (styleType: 'b' | 'i') => {
     const textarea = headlineRef.current;
     if (!textarea) return;
@@ -133,7 +130,6 @@ export default function NewsCardGenerator() {
     }, 50);
   };
 
-  // Live UI Preview Parser
   const renderStyledPreviewText = (rawText: string) => {
     if (!rawText) return langMode === 'EN' ? 'Headline missing...' : 'শিরোনাম অনুপস্থিত...';
     const tokens = rawText.split(/(\[b\].*?\[\/b\]|\[i\].*?\[\/i\])/g);
@@ -162,7 +158,7 @@ export default function NewsCardGenerator() {
     return labels[cat];
   };
 
-  // Upgraded Export Layout Engine (Fixed Overlap, Explicit Language Labels & No Branding Text)
+  // Fixed Export Canvas Engine
   const handleDownloadCard = () => {
     setIsExporting(true);
     
@@ -222,7 +218,6 @@ export default function NewsCardGenerator() {
       const margin = 56;
       let textY = 820; 
 
-      // Category Block (Uses Explicit langMode)
       ctx.fillStyle = '#c1121f';
       ctx.font = langMode === 'EN' 
         ? '900 36px Inter, system-ui, sans-serif'
@@ -230,13 +225,11 @@ export default function NewsCardGenerator() {
       ctx.textBaseline = 'top';
       ctx.fillText(getCategoryLabel(category), margin, textY);
 
-      // Date Block
       textY += 60;
       ctx.fillStyle = selectedVariant === 'white' ? '#444444' : '#94a3b8';
       ctx.font = '500 22px SolaimanLipi, SiyamRupali, Arial, sans-serif';
       ctx.fillText(getDynamicDate(), margin, textY);
 
-      // Headline Parsing Engine
       textY += 55;
       const hSize = 52;
       const maxLineWidth = W - (margin * 2);
@@ -302,7 +295,6 @@ export default function NewsCardGenerator() {
 
       textY = renderRichHeadline(headline || (langMode === 'EN' ? 'Headline missing...' : 'শিরোনাম অনুপস্থিত...'), textY);
 
-      // Subheadline System
       const wrapPlainText = (text: string, maxWidth: number) => {
         const words = text.trim().split(/\s+/);
         if (words.length === 0 || words[0] === "") return [];
@@ -332,7 +324,7 @@ export default function NewsCardGenerator() {
         textY += 42;
       });
 
-      // Cleaner Footer System (Line is there, text is wiped out)
+      // Footer Line
       ctx.strokeStyle = selectedVariant === 'white' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -340,10 +332,15 @@ export default function NewsCardGenerator() {
       ctx.lineTo(W - margin, H - 120);
       ctx.stroke();
 
+      // FIXED: Logo Aspect Ratio & Black Version Invert System
       const logoImg = new window.Image();
       logoImg.crossOrigin = "anonymous";
       logoImg.src = "/logo2.png";
       logoImg.onload = () => {
+        const targetHeight = 52; 
+        const aspectRatio = logoImg.width / logoImg.height;
+        const targetWidth = targetHeight * aspectRatio; // Aspect ratio ঠিক রাখার জন্য ডাইনামিক উইডথ ক্যালকুলেশন
+
         const offscreenCanvas = document.createElement('canvas');
         offscreenCanvas.width = logoImg.width;
         offscreenCanvas.height = logoImg.height;
@@ -351,14 +348,21 @@ export default function NewsCardGenerator() {
         
         if (oCtx) {
           oCtx.drawImage(logoImg, 0, 0);
-          if (selectedVariant === 'black') {
-            oCtx.globalCompositeOperation = 'difference';
-            oCtx.fillStyle = 'white';
+          
+          // FIXED: সলিড হোয়াইট বক্স বাগ দূর করতে 'source-in' ব্যবহার করে শুধু লোগোর পিক্সেল কালার পরিবর্তন
+          if (selectedVariant === 'black' || selectedVariant === 'tong') {
+            oCtx.globalCompositeOperation = 'source-in';
+            oCtx.fillStyle = '#ffffff';
             oCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
           }
-          const logoW = 180;
-          const logoH = 52;
-          ctx.drawImage(offscreenCanvas, W - margin - logoW, H - 95, logoW, logoH);
+          
+          ctx.drawImage(
+            offscreenCanvas, 
+            W - margin - targetWidth, 
+            H - 95, 
+            targetWidth, 
+            targetHeight
+          );
         }
         finalizeDownload();
       };
@@ -435,7 +439,7 @@ export default function NewsCardGenerator() {
           <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-sm border border-stone-200 space-y-5">
             <h2 className="text-sm font-bold text-stone-900 tracking-wider uppercase border-b border-stone-100 pb-3">Card Customizer</h2>
             
-            {/* NEW EXPLICIT LANGUAGE MODE SELECTOR */}
+            {/* LANGUAGE MODE SELECTOR */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Card Language (ভাষা)</label>
               <div className="grid grid-cols-2 gap-2">
@@ -456,6 +460,7 @@ export default function NewsCardGenerator() {
               </div>
             </div>
 
+            {/* TEMPLATE VARIANT SELECTOR */}
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Card Style Template</label>
               <div className="grid grid-cols-2 gap-2 mb-2">
@@ -472,6 +477,24 @@ export default function NewsCardGenerator() {
                   className={`py-2 px-3 text-xs font-medium rounded-xl border transition ${selectedVariant === 'black' ? 'bg-stone-900 text-white border-stone-900' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'}`}
                 >
                   Black Version
+                </button>
+                
+                {/* ADDED & DISABLED OPTIONS */}
+                <button
+                  type="button"
+                  disabled
+                  className="py-2 px-3 text-xs font-medium rounded-xl border bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed opacity-60"
+                  title="Temporarily Disabled"
+                >
+                  General Version (Off)
+                </button>
+                <button
+                  type="button"
+                  disabled
+                  className="py-2 px-3 text-xs font-medium rounded-xl border bg-stone-100 text-stone-400 border-stone-200 cursor-not-allowed opacity-60"
+                  title="Temporarily Disabled"
+                >
+                  Tong Version (Off)
                 </button>
               </div>
             </div>
@@ -598,7 +621,7 @@ export default function NewsCardGenerator() {
             </div>
           </div>
 
-          {/* RIGHT COL: LIVE CANVAS ENGINE PREVIEW */}
+          {/* RIGHT COL: LIVE CANVAS PREVIEW */}
           <div className="lg:col-span-7 flex flex-col items-center justify-center">
             <div className="w-full flex flex-col items-center">
               <span className="text-xs font-bold text-stone-500 uppercase tracking-widest flex items-center space-x-2 mb-3 self-start lg:ml-12">
@@ -654,14 +677,12 @@ export default function NewsCardGenerator() {
                     </p>
 
                     <div className="flex items-center justify-end pt-6 border-t border-stone-500/30">
-                      <div className="relative h-14 w-44">
-                        <Image 
+                      <div className="relative h-14 w-full flex justify-end">
+                        {/* DOM Preview এর লোগো রেসপন্সিভ রাখতে object-contain সেট করা */}
+                        <img 
                           src="/logo2.png" 
                           alt="Layout Branding Asset" 
-                          fill
-                          priority
-                          unoptimized
-                          className={`object-contain ${selectedVariant === 'black' ? 'brightness-0 invert' : ''}`}
+                          className={`h-14 object-contain ${selectedVariant === 'black' ? 'brightness-0 invert' : ''}`}
                         />
                       </div>
                     </div>
