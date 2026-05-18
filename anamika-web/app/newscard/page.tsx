@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import Link from 'react-link';
+import Link from 'next/link'; // Fixed: next/link instead of react-link
 import Image from 'next/image';
 import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy, Check } from 'lucide-react';
 
@@ -116,7 +116,8 @@ export default function NewsCardGenerator() {
         ctx.fill();
         
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillText(photoCredit, 56, 69);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(photoCredit, 56, 62);
       }
 
       // 3. Typography Positioning Engine
@@ -126,25 +127,29 @@ export default function NewsCardGenerator() {
       // Category Block
       ctx.fillStyle = '#c1121f';
       ctx.font = '900 40px SolaimanLipi, SiyamRupali, Arial, sans-serif';
+      ctx.textBaseline = 'top';
       ctx.fillText(getCategoryLabel(category), margin, textY);
 
       // Date Block
-      textY += 50;
+      textY += 60;
       ctx.fillStyle = selectedVariant === 'white' ? '#444444' : '#94a3b8';
       ctx.font = '500 22px SolaimanLipi, SiyamRupali, Arial, sans-serif';
       ctx.fillText(getBanglaDate(), margin, textY);
 
       // Headline System
-      textY += 75;
+      textY += 55;
       ctx.fillStyle = selectedVariant === 'white' ? '#0c0a09' : '#ffffff';
       const hSize = 52;
       ctx.font = `800 ${hSize}px SolaimanLipi, SiyamRupali, Arial, sans-serif`;
-      ctx.textBaseline = 'top';
 
+      // Upgraded Robust Multi-language Wrapping System
       const wrapText = (text: string, maxWidth: number) => {
-        const words = text.split(' ');
-        let lines = [];
+        const words = text.trim().split(/\s+/);
+        if (words.length === 0 || words[0] === "") return [];
+        
+        let lines: string[] = [];
         let currentLine = words[0];
+
         for (let i = 1; i < words.length; i++) {
           let testLine = currentLine + " " + words[i];
           if (ctx.measureText(testLine).width < maxWidth) {
@@ -165,7 +170,7 @@ export default function NewsCardGenerator() {
       });
 
       // Subheadline System
-      textY += 15;
+      textY += 10;
       ctx.fillStyle = selectedVariant === 'white' ? '#292524' : '#cbd5e1';
       ctx.font = '400 25px SolaimanLipi, SiyamRupali, Arial, sans-serif';
       const subLines = wrapText(subHeadline, W - (margin * 2));
@@ -173,9 +178,6 @@ export default function NewsCardGenerator() {
         ctx.fillText(line, margin, textY);
         textY += 40;
       });
-
-      // Reset text baselines for footer alignment
-      ctx.textBaseline = 'alphabetical';
 
       // Footer divider line
       ctx.strokeStyle = selectedVariant === 'white' ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)';
@@ -188,6 +190,7 @@ export default function NewsCardGenerator() {
       // Brand text
       ctx.fillStyle = selectedVariant === 'white' ? '#78716c' : '#a8a29e';
       ctx.font = '600 18px monospace';
+      ctx.textBaseline = 'alphabetic';
       ctx.fillText("TONGERKHOBOR DIGITAL NETWORK", margin, H - 75);
 
       // 4. Render Dynamic Branding Asset Logotypes securely
@@ -210,7 +213,7 @@ export default function NewsCardGenerator() {
           
           const logoW = 192;
           const logoH = 56;
-          ctx.drawImage(offscreenCanvas, W - margin - logoW, H - 105, logoW, logoH);
+          ctx.drawImage(offscreenCanvas, W - margin - logoW, H - 120, logoW, logoH);
         }
 
         finalizeDownload();
@@ -246,7 +249,7 @@ export default function NewsCardGenerator() {
           sx = (dW - W) / 2;
         } else {
           dH = W / imgRatio;
-          sy = (dH - H) / 2; // Center-align vertically
+          sy = (dH - H) / 2; 
         }
 
         ctx.drawImage(mainImg, -sx, -sy, dW, dH);
