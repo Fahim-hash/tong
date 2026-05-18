@@ -11,7 +11,7 @@ type Variant = 'white' | 'black' | 'general' | 'tong';
 export default function NewsCardGenerator() {
   // Input Form States
   const [category, setCategory] = useState<Category>('NATIONAL');
-  const [headline, setHeadline] = useState('এখানে আপনার [b]ব্রেকিং নিউজ[/b] বা আকর্ষণীয় মূল হেডলাইনটি লিখুন');
+  const [headline, setHeadline] = useState('এখানে আপনার [b]ব্রেকিং নিউজ[/b] বা আকর্ষণীয় মূল হেডラインটি লিখুন');
   const [subHeadline, setSubHeadline] = useState('এখানে সংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
   const [photoCredit, setPhotoCredit] = useState('ছবি: টংয়েরখবর');
   const [selectedVariant, setSelectedVariant] = useState<Variant>('black');
@@ -25,24 +25,27 @@ export default function NewsCardGenerator() {
 
   const headlineRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto Language Detection Logic (90% Threshold)
+  // Improved Auto Language Detection Logic (90% Threshold)
   const detectLanguage = (text: string): 'EN' | 'BN' => {
-    const cleanText = text.replace(/\[\/?(b|i)\]/g, '').trim();
+    // Tags এবং স্পেস রিমুভ করে ক্লিন করা
+    const cleanText = text.replace(/\[\/?(b|i)\]/g, '').replace(/\s+/g, '');
     if (!cleanText) return 'BN';
 
-    const englishChars = (cleanText.match(/[a-zA-Z0-9]/g) || []).length;
+    // ক্যারেক্টার কাউন্ট ম্যাট্রিক্স
+    const englishChars = (cleanText.match(/[a-zA-Z]/g) || []).length;
     const banglaChars = (cleanText.match(/[\u0980-\u09FF]/g) || []).length;
-    const totalAlphaNum = englishChars + banglaChars;
+    const totalAlpha = englishChars + banglaChars;
 
-    if (totalAlphaNum === 0) return 'BN';
+    if (totalAlpha === 0) return 'BN';
 
-    const englishRatio = englishChars / totalAlphaNum;
+    // যদি ৯০% বা তার বেশি পিওর ইংলিশ ক্যারেক্টার হয়
+    const englishRatio = englishChars / totalAlpha;
     return englishRatio >= 0.9 ? 'EN' : 'BN';
   };
 
   const isEnglishMode = detectLanguage(headline);
 
-  // Helper function to get current date based on detected language
+  // Dynamic Date Engine based on selected language mode
   const getDynamicDate = () => {
     const date = new Date();
     
@@ -152,7 +155,7 @@ export default function NewsCardGenerator() {
     return labels[cat];
   };
 
-  // Upgraded Export Layout Engine
+  // Upgraded Export Layout Engine (Fixed Overlap & Removed Branding Line)
   const handleDownloadCard = () => {
     setIsExporting(true);
     
@@ -315,28 +318,21 @@ export default function NewsCardGenerator() {
       textY += 10;
       ctx.fillStyle = selectedVariant === 'white' ? '#292524' : '#cbd5e1';
       ctx.font = isEnglishMode ? '400 24px Inter, system-ui, sans-serif' : '400 25px SolaimanLipi, SiyamRupali, Arial, sans-serif';
+      
       const subLines = wrapPlainText(subHeadline, maxLineWidth);
-      subLines.slice(0, 3).forEach((line) => {
+      // এখানে সর্বোচ্চ ২ লাইন প্রিন্ট হবে যাতে নিচের ফুটার লোগোর সাথে ওভারল্যাপ না হয়
+      subLines.slice(0, 2).forEach((line) => {
         ctx.fillText(line, margin, textY);
-        textY += 40;
+        textY += 42;
       });
 
-      // Footer
-      ctx.strokeStyle = selectedVariant === 'white' ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)';
+      // Cleaner Footer System (Branding Line Text Completely Removed)
+      ctx.strokeStyle = selectedVariant === 'white' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(margin, H - 130);
-      ctx.lineTo(W - margin, H - 130);
+      ctx.moveTo(margin, H - 120);
+      ctx.lineTo(W - margin, H - 120);
       ctx.stroke();
-
-      ctx.fillStyle = selectedVariant === 'white' ? '#78716c' : '#a8a29e';
-      ctx.font = '600 18px monospace';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillText(
-        isEnglishMode ? "TONGERKHOBOR DIGITAL NETWORK" : "টংয়েরখবর ডিজিটাল নেটওয়ার্ক", 
-        margin, 
-        H - 75
-      );
 
       const logoImg = new window.Image();
       logoImg.crossOrigin = "anonymous";
@@ -354,9 +350,10 @@ export default function NewsCardGenerator() {
             oCtx.fillStyle = 'white';
             oCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
           }
-          const logoW = 192;
-          const logoH = 56;
-          ctx.drawImage(offscreenCanvas, W - margin - logoW, H - 120, logoW, logoH);
+          const logoW = 180;
+          const logoH = 52;
+          // লোগো ডানদিকের কোনায় ব্যালেন্সড পজিশনে সেট করা হয়েছে
+          ctx.drawImage(offscreenCanvas, W - margin - logoW, H - 95, logoW, logoH);
         }
         finalizeDownload();
       };
@@ -398,30 +395,6 @@ export default function NewsCardGenerator() {
       };
     } else {
       drawTextAndLayers();
-    }
-  };
-
-  const handleGenerateCaption = async () => {
-    if (!headline || headline.trim() === '') {
-      alert('দয়া করে আগে একটি নিউজ হেডলাইন লিখুন।');
-      return;
-    }
-    setIsAiLoading(true);
-    setGeneratedCaption('');
-    try {
-      const res = await fetch('/api/generate-caption', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline, subHeadline, image: imagePreview }),
-      });
-      const data = await res.json();
-      if (data.caption) setGeneratedCaption(data.caption);
-      else setGeneratedCaption('ক্যাপশন জেনারেট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
-    } catch (error) {
-      console.error(error);
-      setGeneratedCaption('সার্ভার ত্রুটি! আবার চেষ্টা করুন।');
-    } finally {
-      setIsAiLoading(false);
     }
   };
 
@@ -672,16 +645,12 @@ export default function NewsCardGenerator() {
                       {renderStyledPreviewText(headline)}
                     </h2>
 
-                    <p className="text-2xl leading-relaxed text-left opacity-80 font-normal line-clamp-3 mb-10">
+                    <p className="text-2xl leading-relaxed text-left opacity-80 font-normal line-clamp-2 mb-10">
                       {subHeadline}
                     </p>
 
-                    <div className="flex items-center justify-between pt-8 border-t border-stone-500/30">
-                      <span className="text-lg font-semibold text-stone-400 font-mono uppercase tracking-widest">
-                        {isEnglishMode ? "TongerKhobor Digital Network" : "টংয়েরখবর ডিজিটাল নেটওয়ার্ক"}
-                      </span>
-                      
-                      <div className="relative h-14 w-48">
+                    <div className="flex items-center justify-end pt-6 border-t border-stone-500/30">
+                      <div className="relative h-14 w-44">
                         <Image 
                           src="/logo2.png" 
                           alt="Layout Branding Asset" 
