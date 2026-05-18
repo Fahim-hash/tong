@@ -11,8 +11,8 @@ type Variant = 'white' | 'black' | 'general' | 'tong';
 export default function NewsCardGenerator() {
   // Input Form States
   const [category, setCategory] = useState<Category>('NATIONAL');
-  const [headline, setHeadline] = useState('এখানে আপনার [b]ব্রেকিং নিউজ[/b] বা আকর্ষণীয় মূল হেডラインটি লিখুন');
-  const [subHeadline, setSubHeadline] = useState('এখানে সংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
+  const [headline, setHeadline] = useState('এখানে আপনার [b]ব্রেকিং নিউজ[/b] বা আকর্ষণীয় মূল হেডলাইনটি লিখুন');
+  const [subHeadline, setSubHeadline] = useState('এখানেসংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
   const [photoCredit, setPhotoCredit] = useState('ছবি: টংয়েরখবর');
   const [selectedVariant, setSelectedVariant] = useState<Variant>('black');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -27,18 +27,15 @@ export default function NewsCardGenerator() {
 
   // Improved Auto Language Detection Logic (90% Threshold)
   const detectLanguage = (text: string): 'EN' | 'BN' => {
-    // Tags এবং স্পেস রিমুভ করে ক্লিন করা
     const cleanText = text.replace(/\[\/?(b|i)\]/g, '').replace(/\s+/g, '');
     if (!cleanText) return 'BN';
 
-    // ক্যারেক্টার কাউন্ট ম্যাট্রিক্স
     const englishChars = (cleanText.match(/[a-zA-Z]/g) || []).length;
     const banglaChars = (cleanText.match(/[\u0980-\u09FF]/g) || []).length;
     const totalAlpha = englishChars + banglaChars;
 
     if (totalAlpha === 0) return 'BN';
 
-    // যদি ৯০% বা তার বেশি পিওর ইংলিশ ক্যারেক্টার হয়
     const englishRatio = englishChars / totalAlpha;
     return englishRatio >= 0.9 ? 'EN' : 'BN';
   };
@@ -81,6 +78,31 @@ export default function NewsCardGenerator() {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  // Generate AI Caption Function
+  const handleGenerateCaption = async () => {
+    if (!headline || headline.trim() === '') {
+      alert('দয়া করে আগে একটি নিউজ হেডলাইন লিখুন।');
+      return;
+    }
+    setIsAiLoading(true);
+    setGeneratedCaption('');
+    try {
+      const res = await fetch('/api/generate-caption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ headline, subHeadline, image: imagePreview }),
+      });
+      const data = await res.json();
+      if (data.caption) setGeneratedCaption(data.caption);
+      else setGeneratedCaption('ক্যাপশন জেনারেট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    } catch (error) {
+      console.error(error);
+      setGeneratedCaption('সার্ভার ত্রুটি! আবার চেষ্টা করুন।');
+    } finally {
+      setIsAiLoading(false);
     }
   };
 
@@ -320,13 +342,12 @@ export default function NewsCardGenerator() {
       ctx.font = isEnglishMode ? '400 24px Inter, system-ui, sans-serif' : '400 25px SolaimanLipi, SiyamRupali, Arial, sans-serif';
       
       const subLines = wrapPlainText(subHeadline, maxLineWidth);
-      // এখানে সর্বোচ্চ ২ লাইন প্রিন্ট হবে যাতে নিচের ফুটার লোগোর সাথে ওভারল্যাপ না হয়
       subLines.slice(0, 2).forEach((line) => {
         ctx.fillText(line, margin, textY);
         textY += 42;
       });
 
-      // Cleaner Footer System (Branding Line Text Completely Removed)
+      // Cleaner Footer System
       ctx.strokeStyle = selectedVariant === 'white' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -352,7 +373,6 @@ export default function NewsCardGenerator() {
           }
           const logoW = 180;
           const logoH = 52;
-          // লোগো ডানদিকের কোনায় ব্যালেন্সড পজিশনে সেট করা হয়েছে
           ctx.drawImage(offscreenCanvas, W - margin - logoW, H - 95, logoW, logoH);
         }
         finalizeDownload();
