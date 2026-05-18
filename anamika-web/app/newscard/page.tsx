@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import Link from 'next/link'; // Fixed: next/link instead of react-link
+import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy, Check, Bold, Italic } from 'lucide-react';
 
 type Category = 'NATIONAL' | 'INTERNATIONAL' | 'SPORTS' | 'POLITICS' | 'ECONOMY' | 'SOCIAL';
 type Variant = 'white' | 'black' | 'general' | 'tong';
@@ -11,7 +11,7 @@ type Variant = 'white' | 'black' | 'general' | 'tong';
 export default function NewsCardGenerator() {
   // Input Form States
   const [category, setCategory] = useState<Category>('NATIONAL');
-  const [headline, setHeadline] = useState('এখানে আপনার ব্রেকিং নিউজ বা আকর্ষণীয় মূল হেডলাইনটি লিখুন');
+  const [headline, setHeadline] = useState('এখানে আপনার [b]ব্রেকিং নিউজ[/b] বা আকর্ষণীয় মূল হেডলাইনটি লিখুন');
   const [subHeadline, setSubHeadline] = useState('এখানে সংবাদের বিস্তারিত বা একটি ছোট উপ-শিরোনাম যোগ করুন যা সংবাদের মূল বিষয়বস্তুকে ফুটিয়ে তুলবে।');
   const [photoCredit, setPhotoCredit] = useState('ছবি: টংয়েরখবর');
   const [selectedVariant, setSelectedVariant] = useState<Variant>('black');
@@ -23,7 +23,7 @@ export default function NewsCardGenerator() {
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
-  const cardRef = useRef<HTMLDivElement>(null);
+  const headlineRef = useRef<HTMLTextAreaElement>(null);
 
   // Helper function to get current date in Bengali
   const getBanglaDate = () => {
@@ -59,7 +59,54 @@ export default function NewsCardGenerator() {
     }
   };
 
-  // Upgraded Download Engine matching the Tailwind layout exactly
+  // Canva Style Wrapper Tool
+  const applyStyleToSelection = (styleType: 'b' | 'i') => {
+    const textarea = headlineRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    
+    if (start === end) return; // No text chosen
+
+    const selectedText = headline.substring(start, end);
+    const openTag = `[${styleType}]`;
+    const closeTag = `[/${styleType}]`;
+
+    // Strip out tags if they already exist to toggle off style cleanly
+    let newText = '';
+    if (selectedText.startsWith(openTag) && selectedText.endsWith(closeTag)) {
+      const stripped = selectedText.substring(openTag.length, selectedText.length - closeTag.length);
+      newText = headline.substring(0, start) + stripped + headline.substring(end);
+    } else {
+      newText = headline.substring(0, start) + openTag + selectedText + closeTag + headline.substring(end);
+    }
+
+    setHeadline(newText);
+    
+    // Restore layout focus states safely
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start, start + newText.length - headline.length + (end - start));
+    }, 50);
+  };
+
+  // Helper parsing loop to transform markdown tokens into clean live JSX Nodes
+  const renderStyledPreviewText = (rawText: string) => {
+    if (!rawText) return 'শিরোনাম অনুপস্থিত...';
+    const tokens = rawText.split(/(\[b\].*?\[\/b\]|\[i\].*?\[\/i\])/g);
+    return tokens.map((token, idx) => {
+      if (token.startsWith('[b]') && token.endsWith('[/b]')) {
+        return <strong key={idx} className="font-black text-amber-400 drop-shadow-sm">{token.replace('[b]', '').replace('[/b]', '')}</strong>;
+      }
+      if (token.startsWith('[i]') && token.endsWith('[/i]')) {
+        return <em key={idx} className="italic font-extrabold text-stone-200">{token.replace('[i]', '').replace('[/i]', '')}</em>;
+      }
+      return token;
+    });
+  };
+
+  // Upgraded Download Engine with Advanced Rich Text Layout Support & Clean Cropping
   const handleDownloadCard = () => {
     setIsExporting(true);
     
@@ -80,7 +127,7 @@ export default function NewsCardGenerator() {
     ctx.fillRect(0, 0, W, H);
 
     const drawTextAndLayers = () => {
-      // 1. Draw Bottom Gradient Overlay (Matches Tailwind 'pt-80' relative blending height)
+      // 1. Draw Bottom Gradient Overlay
       const gradientStartPoint = H - 980; 
       const grad = ctx.createLinearGradient(0, gradientStartPoint, 0, H);
       
@@ -122,7 +169,7 @@ export default function NewsCardGenerator() {
 
       // 3. Typography Positioning Engine
       const margin = 56;
-      let textY = 820; // Anchored accurately to prevent vertical drift
+      let textY = 820; 
 
       // Category Block
       ctx.fillStyle = '#c1121f';
@@ -138,15 +185,80 @@ export default function NewsCardGenerator() {
 
       // Headline System
       textY += 55;
-      ctx.fillStyle = selectedVariant === 'white' ? '#0c0a09' : '#ffffff';
       const hSize = 52;
-      ctx.font = `800 ${hSize}px SolaimanLipi, SiyamRupali, Arial, sans-serif`;
+      const maxLineWidth = W - (margin * 2);
 
-      // Upgraded Robust Multi-language Wrapping System
-      const wrapText = (text: string, maxWidth: number) => {
+      // Advanced Canvas Multi-weight Wrapper
+      const renderRichHeadline = (text: string, startY: number) => {
+        // Tokenize into styled blocks and individual space chunks
+        const tokens = text.trim().split(/(\[b\].*?\[\/b\]|\[i\].*?\[\/i\]|\s+)/g).filter(Boolean);
+        
+        let lines: any[][] = [[]];
+        let currentLineWidth = 0;
+        let currentLineIndex = 0;
+
+        // Configuration mapping
+        const getFontForType = (type: 'bold' | 'italic' | 'regular') => {
+          const base = "SolaimanLipi, SiyamRupali, Arial, sans-serif";
+          if (type === 'bold') return `900 ${hSize}px ${base}`;
+          if (type === 'italic') return `italic 800 ${hSize}px ${base}`;
+          return `800 ${hSize}px ${base}`;
+        };
+
+        // Measure layout constraints first
+        tokens.forEach((token) => {
+          let type: 'bold' | 'italic' | 'regular' = 'regular';
+          let cleanText = token;
+
+          if (token.startsWith('[b]') && token.endsWith('[/b]')) {
+            type = 'bold';
+            cleanText = token.replace('[b]', '').replace('[/b]', '');
+          } else if (token.startsWith('[i]') && token.endsWith('[/i]')) {
+            type = 'italic';
+            cleanText = token.replace('[i]', '').replace('[/i]', '');
+          }
+
+          ctx.font = getFontForType(type);
+          const tokenWidth = ctx.measureText(cleanText).width;
+
+          if (currentLineWidth + tokenWidth > maxLineWidth && token !== ' ') {
+            lines.push([]);
+            currentLineIndex++;
+            currentLineWidth = 0;
+          }
+
+          if (!(token === ' ' && currentLineWidth === 0)) {
+            lines[currentLineIndex].push({ text: cleanText, type, width: tokenWidth });
+            currentLineWidth += tokenWidth;
+          }
+        });
+
+        // Dynamic draw pass
+        let currentY = startY;
+        lines.forEach((line) => {
+          let offsetX = margin;
+          line.forEach((word) => {
+            ctx.font = getFontForType(word.type);
+            ctx.fillStyle = selectedVariant === 'white' 
+              ? (word.type === 'bold' ? '#c1121f' : '#0c0a09') 
+              : (word.type === 'bold' ? '#fbbf24' : '#ffffff');
+            
+            ctx.fillText(word.text, offsetX, currentY);
+            offsetX += word.width;
+          });
+          currentY += hSize * 1.35;
+        });
+
+        return currentY;
+      };
+
+      // Draw out rich headlines
+      textY = renderRichHeadline(headline || 'শিরোনাম অনুপস্থিত...', textY);
+
+      // Subheadline Parsing Engine
+      const wrapPlainText = (text: string, maxWidth: number) => {
         const words = text.trim().split(/\s+/);
         if (words.length === 0 || words[0] === "") return [];
-        
         let lines: string[] = [];
         let currentLine = words[0];
 
@@ -163,17 +275,10 @@ export default function NewsCardGenerator() {
         return lines;
       };
 
-      const headlineLines = wrapText(headline || 'শিরোনাম অনুপস্থিত...', W - (margin * 2));
-      headlineLines.forEach((line) => {
-        ctx.fillText(line, margin, textY);
-        textY += hSize * 1.35;
-      });
-
-      // Subheadline System
       textY += 10;
       ctx.fillStyle = selectedVariant === 'white' ? '#292524' : '#cbd5e1';
       ctx.font = '400 25px SolaimanLipi, SiyamRupali, Arial, sans-serif';
-      const subLines = wrapText(subHeadline, W - (margin * 2));
+      const subLines = wrapPlainText(subHeadline, maxLineWidth);
       subLines.slice(0, 3).forEach((line) => {
         ctx.fillText(line, margin, textY);
         textY += 40;
@@ -215,7 +320,6 @@ export default function NewsCardGenerator() {
           const logoH = 56;
           ctx.drawImage(offscreenCanvas, W - margin - logoW, H - 120, logoW, logoH);
         }
-
         finalizeDownload();
       };
 
@@ -235,24 +339,28 @@ export default function NewsCardGenerator() {
       }
     };
 
-    // 5. Handle Cover Processing with precise cover cropping metrics
+    // 5. Secure Object-Cover Image Cropping Fix Engine
     if (imagePreview) {
       const mainImg = new window.Image();
       mainImg.src = imagePreview;
       mainImg.onload = () => {
         const imgRatio = mainImg.width / mainImg.height;
         const canvasRatio = W / H;
-        let dW = W, dH = H, sx = 0, sy = 0;
+        
+        let sx = 0, sy = 0, sWidth = mainImg.width, sHeight = mainImg.height;
 
         if (imgRatio > canvasRatio) {
-          dW = H * imgRatio;
-          sx = (dW - W) / 2;
+          // Image is landscape / too wide -> slice out sides
+          sWidth = mainImg.height * canvasRatio;
+          sx = (mainImg.width - sWidth) / 2;
         } else {
-          dH = W / imgRatio;
-          sy = (dH - H) / 2; 
+          // Image is vertical / too tall -> slice out center top/bottom vertical boundaries
+          sHeight = mainImg.width / canvasRatio;
+          sy = (mainImg.height - sHeight) / 2;
         }
 
-        ctx.drawImage(mainImg, -sx, -sy, dW, dH);
+        // Draw cropped parameters precisely onto the complete high definition space bounds
+        ctx.drawImage(mainImg, sx, sy, sWidth, sHeight, 0, 0, W, H);
         drawTextAndLayers();
       };
     } else {
@@ -399,13 +507,38 @@ export default function NewsCardGenerator() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Headline Text</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider">Headline Text</label>
+                
+                {/* Canva Text Formatting Toolbar */}
+                <div className="flex bg-stone-100 p-0.5 rounded-lg border border-stone-200">
+                  <button
+                    type="button"
+                    onClick={() => applyStyleToSelection('b')}
+                    className="p-1.5 rounded-md hover:bg-white text-stone-700 transition"
+                    title="Make Selection Bold"
+                  >
+                    <Bold className="h-3.5 w-3.5 stroke-[3]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyStyleToSelection('i')}
+                    className="p-1.5 rounded-md hover:bg-white text-stone-700 transition"
+                    title="Make Selection Italic"
+                  >
+                    <Italic className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
               <textarea
+                ref={headlineRef}
                 rows={3}
                 value={headline}
                 onChange={(e) => setHeadline(e.target.value)}
-                maxLength={140}
-                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020] leading-relaxed resize-none"
+                maxLength={200}
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#800020] leading-relaxed resize-none font-mono text-xs"
+                placeholder="Highlight text and click Bold/Italic to structure like Canva"
               />
             </div>
 
@@ -473,7 +606,6 @@ export default function NewsCardGenerator() {
 
               <div className="w-[360px] h-[450px] relative border border-stone-300 rounded-2xl shadow-2xl overflow-hidden bg-stone-900">
                 <div 
-                  ref={cardRef}
                   className="w-[1080px] h-[1350px] absolute top-0 left-0 origin-top-left flex flex-col justify-end select-none bg-stone-950"
                   style={{ transform: 'scale(0.333333)' }}
                 >
@@ -511,8 +643,8 @@ export default function NewsCardGenerator() {
                       {getBanglaDate()}
                     </div>
 
-                    <h2 className="text-[52px] font-extrabold leading-[1.35] tracking-wide text-left mb-6 font-sans">
-                      {headline || 'শিরোনাম অনুপস্থিত...'}
+                    <h2 className="text-[52px] font-extrabold leading-[1.35] tracking-wide text-left mb-6 font-sans whitespace-pre-wrap">
+                      {renderStyledPreviewText(headline)}
                     </h2>
 
                     <p className="text-2xl leading-relaxed text-left opacity-80 font-normal line-clamp-3 mb-10">
