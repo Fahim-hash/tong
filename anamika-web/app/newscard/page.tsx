@@ -135,10 +135,10 @@ export default function NewsCardGenerator() {
     const tokens = rawText.split(/(\[b\].*?\[\/b\]|\[i\].*?\[\/i\])/g);
     return tokens.map((token, idx) => {
       if (token.startsWith('[b]') && token.endsWith('[/b]')) {
-        return <span key={idx} className="font-extrabold text-amber-400 drop-shadow-sm">{token.replace('[b]', '').replace('[/b]', '')}</span>;
+        return <span key={idx} className={selectedVariant === 'white' ? "font-extrabold text-amber-600 drop-shadow-sm" : "font-extrabold text-amber-400 drop-shadow-sm"}>{token.replace('[b]', '').replace('[/b]', '')}</span>;
       }
       if (token.startsWith('[i]') && token.endsWith('[/i]')) {
-        return <em key={idx} className="italic font-extrabold text-stone-200">{token.replace('[i]', '').replace('[/i]', '')}</em>;
+        return <em key={idx} className={selectedVariant === 'white' ? "italic font-extrabold text-stone-700" : "italic font-extrabold text-stone-200"}>{token.replace('[i]', '').replace('[/i]', '')}</em>;
       }
       return token;
     });
@@ -332,14 +332,14 @@ export default function NewsCardGenerator() {
       ctx.lineTo(W - margin, H - 120);
       ctx.stroke();
 
-      // FIXED: Logo Aspect Ratio & Black Version Invert System
+      // FIXED: Logo Aspect Ratio & Invert/Color Management System
       const logoImg = new window.Image();
       logoImg.crossOrigin = "anonymous";
       logoImg.src = "/logo2.png";
       logoImg.onload = () => {
         const targetHeight = 52; 
         const aspectRatio = logoImg.width / logoImg.height;
-        const targetWidth = targetHeight * aspectRatio; // Aspect ratio ঠিক রাখার জন্য ডাইনামিক উইডথ ক্যালকুলেশন
+        const targetWidth = targetHeight * aspectRatio; 
 
         const offscreenCanvas = document.createElement('canvas');
         offscreenCanvas.width = logoImg.width;
@@ -349,12 +349,14 @@ export default function NewsCardGenerator() {
         if (oCtx) {
           oCtx.drawImage(logoImg, 0, 0);
           
-          // FIXED: সলিড হোয়াইট বক্স বাগ দূর করতে 'source-in' ব্যবহার করে শুধু লোগোর পিক্সেল কালার পরিবর্তন
-          if (selectedVariant === 'black' || selectedVariant === 'tong') {
-            oCtx.globalCompositeOperation = 'source-in';
-            oCtx.fillStyle = '#ffffff';
-            oCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
+          // 'source-in' ব্যবহার করে শুধু লোগোর পিক্সেলের কালার পরিবর্তন করা হচ্ছে
+          oCtx.globalCompositeOperation = 'source-in';
+          if (selectedVariant === 'white') {
+            oCtx.fillStyle = '#0c0a09'; // হোয়াইট থিমের জন্য ডার্ক লোগো 
+          } else {
+            oCtx.fillStyle = '#ffffff'; // ব্ল্যাক/টং থিমের জন্য সলিড হোয়াইট লোগো
           }
+          oCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
           
           ctx.drawImage(
             offscreenCanvas, 
@@ -374,7 +376,8 @@ export default function NewsCardGenerator() {
       function finalizeDownload() {
         const dataUrl = canvas.toDataURL('image/png', 1.0);
         const link = document.createElement('a');
-        link.download = `TongerKhobor-${category}-${Date.now()}.png`;
+        const timestamp = Date.now();
+        link.download = `TongerKhobor-${category}-${timestamp}.png`;
         link.href = dataUrl;
         document.body.appendChild(link);
         link.click();
@@ -467,7 +470,7 @@ export default function NewsCardGenerator() {
                 <button
                   type="button"
                   onClick={() => setSelectedVariant('white')}
-                  className={`py-2 px-3 text-xs font-medium rounded-xl border transition ${selectedVariant === 'white' ? 'bg-[#800020] text-white border-[#800020]' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'}`}
+                  className={`py-2 px-3 text-xs font-medium rounded-xl border transition ${selectedVariant === 'white' ? 'bg-stone-200 text-stone-900 border-stone-400 font-bold' : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'}`}
                 >
                   White Version
                 </button>
@@ -479,7 +482,6 @@ export default function NewsCardGenerator() {
                   Black Version
                 </button>
                 
-                {/* ADDED & DISABLED OPTIONS */}
                 <button
                   type="button"
                   disabled
@@ -678,11 +680,15 @@ export default function NewsCardGenerator() {
 
                     <div className="flex items-center justify-end pt-6 border-t border-stone-500/30">
                       <div className="relative h-14 w-full flex justify-end">
-                        {/* DOM Preview এর লোগো রেসপন্সিভ রাখতে object-contain সেট করা */}
+                        {/* FIXED: White ভার্সনে লোগোটি ডার্ক/ব্ল্যাক থিম পাবে এবং ব্ল্যাক ভার্সনে ইনভার্ট হয়ে হোয়াইট থাকবে */}
                         <img 
                           src="/logo2.png" 
                           alt="Layout Branding Asset" 
-                          className={`h-14 object-contain ${selectedVariant === 'black' ? 'brightness-0 invert' : ''}`}
+                          className={`h-14 object-contain ${
+                            selectedVariant === 'white' 
+                              ? 'brightness-0 opacity-90' 
+                              : 'brightness-0 invert'
+                          }`}
                         />
                       </div>
                     </div>
