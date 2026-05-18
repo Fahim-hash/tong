@@ -81,6 +81,18 @@ export default function NewsCardGenerator() {
     }
   };
 
+  // Copy Caption Function
+  const handleCopyCaption = async () => {
+    if (!generatedCaption) return;
+    try {
+      await navigator.clipboard.writeText(generatedCaption);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
   // Canva Style Wrapper Tool (Color & Italic)
   const applyStyleToSelection = (styleType: 'b' | 'i') => {
     const textarea = headlineRef.current;
@@ -228,7 +240,7 @@ export default function NewsCardGenerator() {
 
         const getFontForType = (type: 'bold' | 'italic' | 'regular') => {
           const base = isEnglishMode ? "Inter, system-ui, sans-serif" : "SolaimanLipi, SiyamRupali, Arial, sans-serif";
-          if (type === 'bold') return `800 ${hSize}px ${base}`; // Dynamic accent font config
+          if (type === 'bold') return `800 ${hSize}px ${base}`; 
           if (type === 'italic') return `italic 800 ${hSize}px ${base}`;
           return `800 ${hSize}px ${base}`;
         };
@@ -267,7 +279,7 @@ export default function NewsCardGenerator() {
             ctx.font = getFontForType(word.type);
             ctx.fillStyle = selectedVariant === 'white' 
               ? (word.type === 'bold' ? '#c1121f' : '#0c0a09') 
-              : (word.type === 'bold' ? '#fbbf24' : '#ffffff'); // Color mode applies yellow accent in black theme
+              : (word.type === 'bold' ? '#fbbf24' : '#ffffff'); 
             
             ctx.fillText(word.text, offsetX, currentY);
             offsetX += word.width;
@@ -365,7 +377,6 @@ export default function NewsCardGenerator() {
       }
     };
 
-    // Object-Cover Cropping Matrix Engine
     if (imagePreview) {
       const mainImg = new window.Image();
       mainImg.src = imagePreview;
@@ -465,7 +476,6 @@ export default function NewsCardGenerator() {
                 </button>
               </div>
               
-              {/* Added general & tong variations as requested (currently offline) */}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -522,7 +532,6 @@ export default function NewsCardGenerator() {
               <div className="flex justify-between items-center mb-2">
                 <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider">Headline Text</label>
                 
-                {/* Custom Canva Text Formatting Toolbar (Color Accent & Italic) */}
                 <div className="flex bg-stone-100 p-0.5 rounded-lg border border-stone-200">
                   <button
                     type="button"
