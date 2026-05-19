@@ -129,7 +129,7 @@ export default function InternalDashboard() {
                   value={userIdInput}
                   onChange={(e) => setUserIdInput(e.target.value)}
                   placeholder="e.g., admin01"
-                  className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-[#800020] focus:bg-white transition"
+                  className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition"
                 />
               </div>
             </div>
@@ -148,7 +148,7 @@ export default function InternalDashboard() {
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-[#800020] focus:bg-white transition"
+                  className="w-full pl-10 pr-10 py-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition"
                 />
               </div>
             </div>
@@ -277,10 +277,15 @@ export default function InternalDashboard() {
                   <FilePlus2 className="h-4 w-4 text-stone-600" />
                   <span>Draft New Article</span>
                 </button>
-                <button type="button" className="w-full flex items-center space-x-3 p-3 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-left text-sm font-medium transition">
-                  <Users className="h-4 w-4 text-stone-600" />
-                  <span>Team Directory</span>
-                </button>
+                
+                {/* লিংক করা টিম ডিরেক্টরি বাটন */}
+                <Link href="/team" className="block w-full">
+                  <button type="button" className="w-full flex items-center space-x-3 p-3 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-left text-sm font-medium transition">
+                    <Users className="h-4 w-4 text-stone-600" />
+                    <span>Team Directory</span>
+                  </button>
+                </Link>
+
                 <button type="button" className="w-full flex items-center space-x-3 p-3 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-left text-sm font-medium transition">
                   <Settings className="h-4 w-4 text-stone-600" />
                   <span>System Settings</span>
