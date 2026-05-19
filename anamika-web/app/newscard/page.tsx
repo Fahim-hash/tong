@@ -66,9 +66,10 @@ export default function NewsCardGenerator() {
     }
   };
 
+  // FIXED: English mode sync issue by sending langMode to the backend
   const handleGenerateCaption = async () => {
     if (!headline || headline.trim() === '') {
-      alert('দয়া করে আগে একটি নিউজ হেডলাইন লিখুন।');
+      alert(langMode === 'EN' ? 'Please enter a headline first.' : 'দয়া করে আগে একটি নিউজ হেডলাইন লিখুন।');
       return;
     }
     setIsAiLoading(true);
@@ -77,27 +78,69 @@ export default function NewsCardGenerator() {
       const res = await fetch('/api/generate-caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ headline, subHeadline, image: imagePreview }),
+        // Added langMode to body payload
+        body: JSON.stringify({ headline, subHeadline, image: imagePreview, langMode }),
       });
       const data = await res.json();
-      if (data.caption) setGeneratedCaption(data.caption);
-      else setGeneratedCaption('ক্যাপশন জেনারেট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+      if (data.caption) {
+        setGeneratedCaption(data.caption);
+      } else {
+        setGeneratedCaption(
+          langMode === 'EN' 
+            ? 'Failed to generate caption. Please try again.' 
+            : 'ক্যাপশন জেনারেট করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।'
+        );
+      }
     } catch (error) {
       console.error(error);
-      setGeneratedCaption('সার্ভার ত্রুটি! আবার চেষ্টা করুন।');
+      setGeneratedCaption(
+        langMode === 'EN' 
+          ? 'Server error! Please try again.' 
+          : 'সার্ভার ত্রুটি! আবার চেষ্টা করুন।'
+      );
     } finally {
       setIsAiLoading(false);
     }
   };
 
+  // FIXED: Copy Text Fallback System for absolute cross-browser & mobile support
   const handleCopyCaption = async () => {
     if (!generatedCaption) return;
+
+    // Try modern Clipboard API first
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(generatedCaption);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+        return;
+      } catch (err) {
+        console.warn('Modern clipboard API failed, rolling back to text-area simulation...', err);
+      }
+    }
+
+    // Fallback Method for HTTP environments, embedded webviews, and strict mobile browsers
     try {
-      await navigator.clipboard.writeText(generatedCaption);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
+      const textArea = document.createElement('textarea');
+      textArea.value = generatedCaption;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      const successful = document.execCommand('copy');
+      if (successful) {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      } else {
+        alert(langMode === 'EN' ? 'Failed to copy text. Please copy manually.' : 'টেক্সট কপি করা যায়নি। দয়া করে ম্যানুয়ালি কপি করুন।');
+      }
+      document.body.removeChild(textArea);
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      console.error('Fallback copy engine critical error: ', err);
+      alert(langMode === 'EN' ? 'Could not copy text automatically.' : 'অটোমেটিক কপি করা সম্ভব হয়নি।');
     }
   };
 
@@ -332,7 +375,7 @@ export default function NewsCardGenerator() {
       ctx.lineTo(W - margin, H - 120);
       ctx.stroke();
 
-      // FIXED: Logo Aspect Ratio & Invert/Color Management System
+      // Logo Drawing Layer
       const logoImg = new window.Image();
       logoImg.crossOrigin = "anonymous";
       logoImg.src = "/logo2.png";
@@ -348,13 +391,11 @@ export default function NewsCardGenerator() {
         
         if (oCtx) {
           oCtx.drawImage(logoImg, 0, 0);
-          
-          // 'source-in' ব্যবহার করে শুধু লোগোর পিক্সেলের কালার পরিবর্তন করা হচ্ছে
           oCtx.globalCompositeOperation = 'source-in';
           if (selectedVariant === 'white') {
-            oCtx.fillStyle = '#0c0a09'; // হোয়াইট থিমের জন্য ডার্ক লোগো 
+            oCtx.fillStyle = '#0c0a09'; 
           } else {
-            oCtx.fillStyle = '#ffffff'; // ব্ল্যাক/টং থিমের জন্য সলিড হোয়াইট লোগো
+            oCtx.fillStyle = '#ffffff'; 
           }
           oCtx.fillRect(0, 0, offscreenCanvas.width, offscreenCanvas.height);
           
@@ -680,7 +721,6 @@ export default function NewsCardGenerator() {
 
                     <div className="flex items-center justify-end pt-6 border-t border-stone-500/30">
                       <div className="relative h-14 w-full flex justify-end">
-                        {/* FIXED: White ভার্সনে লোগোটি ডার্ক/ব্ল্যাক থিম পাবে এবং ব্ল্যাক ভার্সনে ইনভার্ট হয়ে হোয়াইট থাকবে */}
                         <img 
                           src="/logo2.png" 
                           alt="Layout Branding Asset" 
