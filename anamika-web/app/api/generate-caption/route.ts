@@ -11,7 +11,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Headline missing' }, { status: 400 });
     }
 
-    const { headline, subHeadline, image } = body;
+    // ফ্রন্টএন্ডের স্টেট অনুযায়ী langMode রিসিভ করা হচ্ছে (Default: 'BN')
+    const { headline, subHeadline, image, langMode = 'BN' } = body;
     const apiKey = process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
@@ -38,25 +39,33 @@ export async function POST(request: Request) {
       }
     }
 
-    // ২. প্রম্পট
+    // ২. langMode ('EN' vs 'BN') এর ওপর ভিত্তি করে ডাইনামিক প্রম্পট কন্ডিশন
+    const isEnglish = langMode === 'EN';
+    
+    const languageInstruction = isEnglish 
+      ? `২. তথ্যের ওপর ভিত্তি করে ফেসবুক বা সোশ্যাল মিডিয়ার জন্য একটি অত্যন্ত আকর্ষণীয়, প্রফেশনাল ও এনগেজিং ইংরেজি (English) ক্যাপশন তৈরি করো। ক্যাপশনে মানানসই ইমোজি ব্যবহার করবে।
+         ৩. ক্যাপশনের নিচে ৪-৫টি প্রাসঙ্গিক ও ট্রেন্ডিং ইংরেজি হ্যাশট্যাগ (#) যোগ করো।`
+      : `২. তথ্যের ওপর ভিত্তি করে ফেসবুক বা সোশ্যাল মিডিয়ার জন্য একটি আকর্ষণীয় ও চমৎকার বাংলা (Bangla) ক্যাপশন তৈরি করো। ক্যাপশনে মানানসই ইমোজি ব্যবহার করবে।
+         ৩. ক্যাপশনের নিচে ৪-৫টি প্রাসঙ্গিক ও ট্রেন্ডিং বাংলা হ্যাশট্যাগ (#) যোগ করো।`;
+
     const prompt = `
       নিচের নিউজ হেডলাইন এবং সাব-হেডলাইনটি বিশ্লেষণ করো।
       ১. ইন্টারনেট (Google Search) ব্যবহার করে এই খবরের মূল সত্যতা এবং লেটেস্ট আপডেট জেনে নাও।
-      ২. তথ্যের ওপর ভিত্তি করে ফেসবুক বা সোশ্যাল মিডিয়ার জন্য একটি আকর্ষণীয় ও চমৎকার বাংলা ক্যাপশন তৈরি করো।
-      ৩. ক্যাপশনের নিচে ৪-৫টি প্রাসঙ্গিক ও ট্রেন্ডিং হ্যাশট্যাগ যোগ করো।
+      ${languageInstruction}
 
       ইনপুট ডেটা:
       - হেডলাইন: "${headline}"
       - সাব-হেডলাইন: "${subHeadline || ''}"
     `;
-    contents.push(prompt);
+    
+    // SDK স্ট্রাকচার ঠিক রাখতে অবজেক্ট আকারে টেক্সট পুশ করা হলো
+    contents.push({ text: prompt });
 
-    // ৩. এপিআই কল (মডেলের নাম এবং কনফিগারেশন ফিক্সড)
+    // ৩. এপিআই কল (gemini-2.5-flash এবং লাইভ গুগল সার্চ এনাবলড)
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash', // নতুন SDK-এর জন্য পারফেক্ট এবং আপ-টু-ডেট মডেল
+      model: 'gemini-2.5-flash', 
       contents: contents,
       config: {
-        // নতুন @google/genai SDK-তে গুগল সার্চ এনাবল করার সঠিক নিয়ম
         tools: [{ googleSearch: {} }],
       },
     });
