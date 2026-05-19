@@ -22,7 +22,7 @@ export default function TongerKhoborTeam() {
   const [activeTab, setActiveTab] = useState<RoleCategory>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // টংয়েরখবর টিম মেম্বার ডেটা
+  // টংয়েরখবর টিম মেম্বার ডেটা
   const teamMembers: TeamMember[] = [
     {
       id: 1,
@@ -81,7 +81,7 @@ export default function TongerKhoborTeam() {
   return (
     <div className="min-h-screen bg-[#090d14] font-sans text-stone-200 pb-16 selection:bg-[#c1121f] selection:text-white">
       
-      {/* টংয়েরখবর স্টাইল হেডার */}
+      {/* টংয়েরখবর স্টাইল হেডার */}
       <div className="bg-[#090d14]/90 border-b border-stone-800 sticky top-0 z-50 px-4 py-4 sm:px-6 backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
@@ -90,7 +90,7 @@ export default function TongerKhoborTeam() {
             </Link>
             <div>
               <h1 className="text-xl font-black text-white flex items-center gap-2 font-sans tracking-wide">
-                <Sparkles className="h-5 w-5 text-[#c1121f]" /> টংয়েরখবর টিম ডিরেক্টরি
+                <Sparkles className="h-5 w-5 text-[#c1121f]" /> টংয়েরখবর টিম ডিরেক্টরি
               </h1>
               <p className="text-xs text-stone-400 font-mono tracking-wider uppercase">The Minds Behind TongerKhobor Network</p>
             </div>
@@ -161,7 +161,7 @@ export default function TongerKhoborTeam() {
                   {member.role}
                 </p>
 
-                {/* টংয়েরখবর সিগনেচার কালার ব্যাজ */}
+                {/* টংয়েরখবর সিগনেচার কালার ব্যাজ */}
                 <span className={`mt-4 px-3 py-0.5 text-[10px] font-black tracking-widest uppercase rounded-md border ${
                   member.category === 'TECH' ? 'bg-blue-950/40 text-blue-400 border-blue-900/50' :
                   member.category === 'CREATIVE' ? 'bg-amber-950/40 text-amber-400 border-amber-900/50' :
@@ -200,7 +200,7 @@ export default function TongerKhoborTeam() {
         ) : (
           /* নো রেজাল্ট ফাউন্ড */
           <div className="text-center py-20 bg-stone-950 border border-stone-800 rounded-2xl shadow-inner">
-            <p className="text-stone-500 text-sm font-medium font-sans">এই ফিল্টারে টংয়েরখবরের কোনো মেম্বার খুঁজে পাওয়া যায়নি।</p>
+            <p className="text-stone-500 text-sm font-medium font-sans">এই ফিল্টারে টংয়েরখবরের কোনো মেম্বার খুঁজে পাওয়া যায়নি।</p>
           </div>
         )}
 
