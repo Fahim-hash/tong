@@ -3,6 +3,8 @@
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { db } from '../lib/firebase'; // ফায়ারবেস কানেকশন ইম্পোর্ট
+import { doc, updateDoc, increment } from 'firebase/firestore'; // ফায়ারবেস কাউন্টার মেথড
 import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy, Check, Type, Italic } from 'lucide-react';
 
 type Category = 'NATIONAL' | 'INTERNATIONAL' | 'SPORTS' | 'POLITICS' | 'ECONOMY' | 'SOCIAL';
@@ -78,7 +80,6 @@ export default function NewsCardGenerator() {
       const res = await fetch('/api/generate-caption', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // Added langMode to body payload
         body: JSON.stringify({ headline, subHeadline, image: imagePreview, langMode }),
       });
       const data = await res.json();
@@ -107,7 +108,6 @@ export default function NewsCardGenerator() {
   const handleCopyCaption = async () => {
     if (!generatedCaption) return;
 
-    // Try modern Clipboard API first
     if (navigator.clipboard && window.isSecureContext) {
       try {
         await navigator.clipboard.writeText(generatedCaption);
@@ -119,7 +119,6 @@ export default function NewsCardGenerator() {
       }
     }
 
-    // Fallback Method for HTTP environments, embedded webviews, and strict mobile browsers
     try {
       const textArea = document.createElement('textarea');
       textArea.value = generatedCaption;
@@ -135,12 +134,12 @@ export default function NewsCardGenerator() {
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
       } else {
-        alert(langMode === 'EN' ? 'Failed to copy text. Please copy manually.' : 'টেক্সট কপি করা যায়নি। দয়া করে ম্যানুয়ালি কপি করুন।');
+        alert(langMode === 'EN' ? 'Failed to copy text. Please copy manually.' : 'টেক্সট কপি করা যায়নি। দয়া করে ম্যানুয়ালি কপি করুন।');
       }
       document.body.removeChild(textArea);
     } catch (err) {
       console.error('Fallback copy engine critical error: ', err);
-      alert(langMode === 'EN' ? 'Could not copy text automatically.' : 'অটোমেটিক কপি করা সম্ভব হয়নি।');
+      alert(langMode === 'EN' ? 'Could not copy text automatically.' : 'অটোমেটিক কপি করা সম্ভব হয়নি।');
     }
   };
 
@@ -199,6 +198,26 @@ export default function NewsCardGenerator() {
       SOCIAL: 'সমাজ'
     };
     return labels[cat];
+  };
+
+  // NEW: ফায়ারবেস ডেটাবেসে নিউজ কার্ডের কাউন্ট বাড়িয়ে দেওয়ার ট্র্যাকিং ফাংশন
+  const trackFirebaseNewsCount = async () => {
+    try {
+      const session = localStorage.getItem('tk_user_session');
+      if (!session) return;
+      
+      const currentSession = JSON.parse(session);
+      const userId = currentSession.id.toLowerCase().trim();
+
+      // Firestore মেম্বার ডক আইডেন্টিফাই করে কাউন্টার +১ করা
+      const memberDocRef = doc(db, "members", userId);
+      await updateDoc(memberDocRef, {
+        newsCardCount: increment(1)
+      });
+      console.log("Firebase News count incremented!");
+    } catch (err) {
+      console.error("Failed to track news count on Firebase:", err);
+    }
   };
 
   // Fixed Export Canvas Engine
@@ -414,7 +433,7 @@ export default function NewsCardGenerator() {
         finalizeDownload();
       };
 
-      function finalizeDownload() {
+      async function finalizeDownload() {
         const dataUrl = canvas.toDataURL('image/png', 1.0);
         const link = document.createElement('a');
         const timestamp = Date.now();
@@ -423,6 +442,10 @@ export default function NewsCardGenerator() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+
+        // ডাউনলোডের একদম শেষে ফায়ারবেস ট্র্যাকিং ফাংশনটি ট্রিগার করা হলো
+        await trackFirebaseNewsCount();
+
         setIsExporting(false);
       }
     };
