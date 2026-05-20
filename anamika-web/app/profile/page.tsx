@@ -32,7 +32,7 @@ export default function ProfilePage() {
     // ১. কারেন্ট লগইন সেশন ভেরিফিকেশন
     const session = localStorage.getItem('tk_user_session');
     if (!session) {
-      window.location.href = '/dashboard'; 
+      window.location.href = '/'; 
       return;
     }
     const currentSession = JSON.parse(session);
