@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'react';
+import Link from 'next/link'; // রিয়্যাক্ট মডিউল থেকে নয়, নেক্সট লিংক থেকে ইম্পোর্ট ফিক্স করা হয়েছে
 import Image from 'next/image';
-import { db } from '../lib/firebase'; // আপনার প্রোজেক্ট স্ট্রাকচার অনুযায়ী পাথ নিশ্চিত করুন
+import { db } from '../lib/firebase'; // আপনার প্রোজেক্ট স্ট্রাকচার অনুযায়ী সঠিক আপেক্ষিক পাথ
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ArrowLeft, Save, Sparkles, Loader2, Upload, Lock } from 'lucide-react';
 
@@ -32,7 +32,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // ড্যাশবোর্ডের মতো হুবহু একই উপায়ে লোকাল সেশন থেকে ID ও Name রিড করা হচ্ছে
+    // ড্যাশবোর্ডের মতো হুবহু একই উপায়ে লোকাল সেশন থেকে ID ও Name রিড করা হচ্ছে
     const session = localStorage.getItem('tk_user_session');
     if (!session) {
       window.location.href = '/'; 
@@ -72,7 +72,7 @@ export default function ProfilePage() {
             password: userData.password || ''
           });
         } else {
-          // কোনো কারণে ক্লাউডে ডাটা না থাকলে ড্যাশবোর্ড সেশন অনুযায়ী ফ্রেশ স্ট্রাকচার জেনারেট হবে
+          // ক্লাউডে ডাটা না থাকলে ড্যাশবোর্ড সেশন অনুযায়ী ফ্রেশ স্ট্রাকচার জেনারেট হবে
           const defaultProfile: UserProfile = {
             id: cleanedUserId,
             name: currentSession.name || "New Member",
@@ -147,7 +147,7 @@ export default function ProfilePage() {
     };
   };
 
-  // সাবমিট করার সময় ড্যাশবোর্ডের মতো সেইম মেম্বার ডক স্ন্যাপশট ও ক্লিন আইডি ম্যাচিং
+  // সাবমিট করার সময় ফায়ারবেস ডেটা সিঙ্ক করা
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -163,7 +163,6 @@ export default function ProfilePage() {
     try {
       const cleanedId = String(profile.id).trim().toLowerCase();
       
-      // ড্যাশবোর্ডের মতো স্পেসিফিক মেম্বার ডকুমেন্ট স্ন্যাপশট কলিং
       const memberDocRef = doc(db, 'members', cleanedId);
       const memberDocSnap = await getDoc(memberDocRef);
 
@@ -242,7 +241,16 @@ export default function ProfilePage() {
           {/* AVATAR & ANALYTICS HEADER */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100">
             <div className="flex items-center space-x-4">
-              <img src={profile.image || "/logo.png"} alt="Profile Avatar" className="w-16 h-16 rounded-full object-cover border border-stone-300 bg-stone-100 shadow-inner" />
+              <div className="relative w-16 h-16 rounded-full overflow-hidden border border-stone-300 bg-stone-100 shadow-inner">
+                <Image 
+                  src={profile.image || "/logo.png"} 
+                  alt="Profile Avatar" 
+                  fill
+                  sizes="64px"
+                  className="object-cover"
+                  priority 
+                />
+              </div>
               <div>
                 <h3 className="text-lg font-bold text-stone-900">{profile.name}</h3>
                 <p className="text-xs text-stone-400 font-mono">System Identity Document: {profile.id}</p>
@@ -313,7 +321,7 @@ export default function ProfilePage() {
                 placeholder="Enter new private gate password" 
                 value={profile.password || ''} 
                 onChange={e => setProfile({...profile, password: e.target.value})} 
-                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" 
+                className="w-full bg-[#faf9f6] border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" 
               />
             </div>
           </div>
