@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'react';
 import Image from 'next/image';
-import { db } from './lib/firebase'; // আপনার প্রোজেক্ট স্ট্রাকচার অনুযায়ী পাথ নিশ্চিত করুন
+import { db } from '../lib/firebase'; // আপনার প্রোজেক্ট স্ট্রাকচার অনুযায়ী পাথ নিশ্চিত করুন
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ArrowLeft, Save, Sparkles, Loader2, Upload, Lock } from 'lucide-react';
 
