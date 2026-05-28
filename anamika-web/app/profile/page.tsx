@@ -37,7 +37,6 @@ export default function ProfilePage() {
     }
     const currentSession = JSON.parse(session);
     
-    // সেশন থেকে আইডি রিড করার সেইফগার্ড (relax_bro বা যেকোনো আইডি স্ট্রিং নিশ্চিত করা)
     if (!currentSession || !currentSession.id) {
       setErrorMsg('সেশন থেকে ইউজার আইডি লোড করা যায়নি!');
       return;
@@ -99,7 +98,6 @@ export default function ProfilePage() {
         let width = img.width;
         let height = img.height;
 
-        // প্রোফাইল পিকচারের জন্য সর্বোচ্চ ৪০০x৪০০ পিক্সেল সাইজ যথেষ্ট
         const MAX_SIZE = 400; 
         
         if (width > height) {
@@ -121,7 +119,7 @@ export default function ProfilePage() {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           
-          // কোয়ালিটি ০.৭ (৭০%) দিয়ে JPEG ফরম্যাটে কম্প্রেসড Base64 জেনারেট করা (সাইজ নামবে ২০-৫০ KB তে)
+          // কোয়ালিটি ০.৭ দিয়ে JPEG কমপ্রেশন (সাইজ নামবে ২০-৫০ KB তে)
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
           
           setProfile({ ...profile, image: compressedBase64 });
@@ -145,7 +143,7 @@ export default function ProfilePage() {
     };
   };
 
-  // ৪. ফর্ম সাবমিশন এবং Firestore ডকুমেন্ট মার্জিং আপডেট (Underscore ID & Type Error Fixed)
+  // ৪. ফর্ম সাবমিশন এবং Firestore ডকুমেন্ট চেকিং ও সেভিং আপডেট (cleanedId লজিকসহ)
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -160,15 +158,18 @@ export default function ProfilePage() {
 
     try {
       // আইডি স্ট্রিং কাস্টিং ও ফরম্যাট প্রিজারভেশন (যেমন: relax_bro)
-      const rawId = String(profile.id).trim();
-      if (!rawId) {
+      const cleanedId = String(profile.id).trim().toLowerCase();
+      if (!cleanedId) {
         throw new Error("ইউজার আইডি সম্পূর্ণ খালি বা অবৈধ।");
       }
-      const cleanId = rawId.toLowerCase(); 
+
+      // নির্দিষ্ট মেম্বার ডকুমেন্ট রেফারেন্স এবং স্ন্যাপশট চেকিং
+      const memberDocRef = doc(db, 'members', cleanedId);
+      const memberDocSnap = await getDoc(memberDocRef);
 
       // --- Undefined বা খালি ডাটা ফিল্টারিং সেইফগার্ড ---
       const cleanProfile: Record<string, any> = {
-        id: cleanId,
+        id: cleanedId,
         name: profile.name ? String(profile.name).trim() : "Syed Fahim Muddasir",
         role: profile.role ? String(profile.role).trim() : "Creative Designer",
         category: profile.category || "CREATIVE",
@@ -181,12 +182,18 @@ export default function ProfilePage() {
         password: profile.password ? String(profile.password).trim() : ""
       };
 
-      // ফায়ারস্টোরে নির্দিষ্ট মেম্বার আইডিতে ডাটা সেভ বা মার্জ করা
-      await setDoc(doc(db, "members", cleanId), cleanProfile, { merge: true });
+      // যদি ডকুমেন্টটি আগে থেকেই ফায়ারবেসে থাকে, তবে সেফলি মার্জ হবে
+      if (memberDocSnap.exists()) {
+        await setDoc(memberDocRef, cleanProfile, { merge: true });
+      } else {
+        // নতুন মেম্বার হলে ফ্রেশ ডকুমেন্ট ক্রিয়েট হবে
+        await setDoc(memberDocRef, cleanProfile);
+      }
+      
       setSuccessMsg('প্রোফাইল এবং সিকিউরিটি সেটিংস সফলভাবে ক্লাউডে আপডেট হয়েছে!');
     } catch (error: any) {
       console.error("Firebase write error detailed:", error);
-      setErrorMsg(`ডাটা সেভ করা যায়নি। ফায়ারবেস রেসপন্স: ${error.message || 'আইডি ফরম্যাট গত সমস্যা।'}`);
+      setErrorMsg(`ডাটা সেভ করা যায়নি। ফায়ারবেস রেসপন্স: ${error.message || 'ডকুমেন্ট পাথ বা আইডি রিডিং এরর।'}`);
     } finally {
       setIsSaving(false);
     }
@@ -233,7 +240,7 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* অবতার ভিউ এবং রিয়েল-টাইম নিউজ কার্ড কাউন্টার প্যানেল */}
+          {/* অবতার ভিউ এবং রিয়েল-টাইম নিউজ কার্ড কাউন্টার প্যানেлы */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-900">
             <div className="flex items-center space-x-4">
               <img src={profile.image || "/logo.png"} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-stone-700 bg-stone-900" />
