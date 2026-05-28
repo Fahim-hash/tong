@@ -45,7 +45,7 @@ export default function RegisterMember() {
     setIsLoading(true);
 
     try {
-      // ১. চেক করা হচ্ছে এই আইডি দিয়ে অলরেডি কেউ রেজিস্টার্ড কি না
+      // ১. চেক করা হচ্ছে এই আইডি দিয়ে অলরেডি কেউ রেজিস্টার্ড কি না
       const memberRef = doc(db, 'members', cleanedId);
       const memberSnap = await getDoc(memberRef);
 
@@ -55,18 +55,27 @@ export default function RegisterMember() {
         return;
       }
 
-      // ২. নতুন মেম্বার ডেটা ফায়ারবেসে পুশ করা হচ্ছে (আপনার ফিল্ড স্কিমা অনুযায়ী)
+      // ২. নতুন মেম্বার ডেটা ফায়ারবেসে পুশ করা হচ্ছে
+      const newMemberName = fullName.trim();
       await setDoc(memberRef, {
-        name: fullName.trim(),
-        password: password, // আপনার ফিল্ড স্কিমা অনুযায়ী 'password'
+        name: newMemberName,
+        password: password, // আপনার ফিল্ড স্কিমা অনুযায়ী 'password'
         newsCardCount: 0    // নতুন মেম্বারের জন্য ডিফোল্ট কাউন্টার ০
       });
 
+      // ৩. --- AUTO LOGIN LOGIC ---
+      // ড্যাশবোর্ডের সাথে ম্যাচিং রেখে সেশন অবজেক্ট তৈরি এবং লোকাল স্টোরেজে সেভ
+      const structuralSession = { 
+        id: cleanedId, 
+        name: newMemberName 
+      };
+      localStorage.setItem('tk_user_session', JSON.stringify(structuralSession));
+
       setIsSuccess(true);
       
-      // ৩ সেকেন্ড পর লগইন বা ড্যাশবোর্ড পেজে রিডাইরেক্ট করবে
+      // ৪. ২.৫ সেকেন্ড লোডিং অ্যানিমেশন দেখিয়ে ড্যাশবোর্ড/প্রোফাইল পেজে রিডাইরেক্ট
       setTimeout(() => {
-        router.push('/'); // আপনার ড্যাশবোর্ড পাথ দিন
+        router.push('/'); // আপনার ইন্টারনাল ড্যাশবোর্ড বা প্রোফাইল পেজের সঠিক পাথটি দিন
       }, 2500);
 
     } catch (err) {
@@ -111,12 +120,15 @@ export default function RegisterMember() {
             <div>
               <h2 className="text-lg font-bold text-stone-900">Registration Successful!</h2>
               <p className="text-stone-500 text-sm mt-1">
-                <span className="font-mono font-semibold text-[#800020]">{memberId.toLowerCase()}</span> has been added to the system.
+                Welcome <span className="font-semibold text-black">{fullName.trim()}</span>! Account active.
+              </p>
+              <p className="text-stone-400 text-xs mt-0.5">
+                Logged in automatically as <span className="font-mono font-semibold text-[#800020]">@{memberId.toLowerCase()}</span>
               </p>
             </div>
             <p className="text-xs text-stone-400 font-mono flex items-center space-x-1 pt-4">
               <Loader2 className="h-3 w-3 animate-spin text-stone-400" />
-              <span>Redirecting to portal...</span>
+              <span>Initializing secure profile session...</span>
             </p>
           </div>
         ) : (
@@ -142,7 +154,7 @@ export default function RegisterMember() {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g.,tongerkhobor"
+                  placeholder="e.g., Syed Fahim"
                   className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition"
                 />
               </div>
@@ -162,7 +174,7 @@ export default function RegisterMember() {
                   required
                   value={memberId}
                   onChange={(e) => setMemberId(e.target.value.replace(/\s+/g, ''))} // স্পেস রিমুভ করবে স্বয়ংক্রিয়ভাবে
-                  placeholder="e.g., tong member"
+                  placeholder="e.g., member26"
                   className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-mono text-black focus:outline-none focus:border-[#800020] focus:bg-white transition"
                 />
               </div>
