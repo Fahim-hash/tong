@@ -142,7 +142,7 @@ export default function RegisterMember() {
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g., Fahim Muddasir"
+                  placeholder="e.g.,tongerkhobor"
                   className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition"
                 />
               </div>
@@ -162,7 +162,7 @@ export default function RegisterMember() {
                   required
                   value={memberId}
                   onChange={(e) => setMemberId(e.target.value.replace(/\s+/g, ''))} // স্পেস রিমুভ করবে স্বয়ংক্রিয়ভাবে
-                  placeholder="e.g., fahim26"
+                  placeholder="e.g., tong member"
                   className="w-full pl-10 pr-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm font-mono text-black focus:outline-none focus:border-[#800020] focus:bg-white transition"
                 />
               </div>
