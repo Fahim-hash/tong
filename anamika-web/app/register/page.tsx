@@ -66,7 +66,7 @@ export default function RegisterMember() {
       
       // ৩ সেকেন্ড পর লগইন বা ড্যাশবোর্ড পেজে রিডাইরেক্ট করবে
       setTimeout(() => {
-        router.push('/dashboard'); // আপনার ড্যাশবোর্ড পাথ দিন
+        router.push('/'); // আপনার ড্যাশবোর্ড পাথ দিন
       }, 2500);
 
     } catch (err) {
@@ -232,7 +232,7 @@ export default function RegisterMember() {
 
         <div className="bg-stone-50 px-6 py-4 border-t border-stone-100 text-center flex justify-between items-center text-[11px] text-stone-400">
           <span>TongerKhobor Security</span>
-          <Link href="/dashboard" className="text-[#800020] font-medium hover:underline">
+          <Link href="/" className="text-[#800020] font-medium hover:underline">
             Already have an account?
           </Link>
         </div>
