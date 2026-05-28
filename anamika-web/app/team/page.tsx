@@ -81,7 +81,7 @@ export default function TongerKhoborTeam() {
       <div className="bg-[#090d14]/90 border-b border-stone-800 sticky top-0 z-50 px-4 py-4 sm:px-6 backdrop-blur-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link href="/dashboard" className="p-2 bg-stone-900 hover:bg-stone-800 rounded-xl transition text-stone-400 hover:text-white border border-stone-800">
+            <Link href="/" className="p-2 bg-stone-900 hover:bg-stone-800 rounded-xl transition text-stone-400 hover:text-white border border-stone-800">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
