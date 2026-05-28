@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Newspaper, LayoutDashboard, FilePlus2, Users, Settings, ArrowRight, Lock, User, LogOut, Loader2, Trophy } from 'lucide-react';
-// Firebase ইম্পোর্ট করুন
-import { db } from './lib/firebase'; // আপনার সঠিক পাথ দিন
+// Firebase ইম্পোর্ট
+import { db } from './lib/firebase'; // আপনার সঠিক পাথ নিশ্চিত করুন
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 interface Member {
@@ -26,7 +26,7 @@ export default function InternalDashboard() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Authentication logic on mount
+  // Authentication & Live Firebase Fetching
   useEffect(() => {
     const session = localStorage.getItem('tk_user_session');
     if (session) {
@@ -38,8 +38,8 @@ export default function InternalDashboard() {
     }
 
     // --- FIREBASE FIRESTORE LIVE LEADERBOARD CONNECTIVITY ---
-    // Firestore-এর 'members' কালেকশন থেকে 'cardsGenerated' অনুযায়ী desc অর্ডারে কুয়েরি করা হচ্ছে
-    const membersQuery = query(collection(db, 'members'), orderBy('cardsGenerated', 'desc'));
+    // image_a1217b.png অনুযায়ী সঠিক ফিল্ড 'newsCardCount' দিয়ে desc অর্ডারে কুয়েরি করা হচ্ছে
+    const membersQuery = query(collection(db, 'members'), orderBy('newsCardCount', 'desc'));
 
     // onSnapshot রিয়েল-টাইম ডেটা লিসেন করে
     const unsubscribe = onSnapshot(membersQuery, (snapshot) => {
@@ -47,10 +47,10 @@ export default function InternalDashboard() {
       snapshot.forEach((doc) => {
         const data = doc.data();
         memberList.push({
-          id: doc.id, // অথবা data.id (আপনার ডেটাবেস ডিজাইন অনুযায়ী)
+          id: doc.id, 
           name: data.name || 'Unknown',
-          pass: data.pass || '',
-          cardsGenerated: data.cardsGenerated || 0
+          pass: data.password || '', // image_a1217b.png অনুযায়ী 'password' ফিল্ড ম্যাপিং
+          cardsGenerated: data.newsCardCount || 0 // image_a1217b.png অনুযায়ী 'newsCardCount' ফিল্ড ম্যাপিং
         });
       });
       setMembers(memberList);
@@ -62,15 +62,13 @@ export default function InternalDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // Handle local login submission matching against Firebase data or static data
+  // Handle local login submission matching against static data
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoggingIn(true);
 
     try {
-      // লগইন ভ্যালিডেশন এখনো আপনার স্থানীয় JSON ফাইল থেকে কাজ করবে 
-      // (যদি মেম্বারদের পাসওয়ার্ড সিকিউর করতে চান, তবে পরবর্তীতে Firebase Auth ব্যবহার করা ভালো)
       const res = await fetch('/data/info.json');
       if (!res.ok) throw new Error('Failed to load user credentials file.');
       
@@ -208,7 +206,7 @@ export default function InternalDashboard() {
     <div className="min-h-screen bg-stone-50 font-sans text-stone-800 flex flex-col">
       
       {/* --- NAVBAR --- */}
-      <nav className="bg-[#800020] text-white shadow-lg border-b border-maroon-700">
+      <nav className="bg-[#800020] text-white shadow-lg border-b border-stone-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             
@@ -233,12 +231,12 @@ export default function InternalDashboard() {
                 <p className="text-sm font-bold tracking-wide text-white">{userSession?.name}</p>
                 <p className="text-xs text-stone-300 font-mono">ID: {userSession?.id}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-maroon-800 border border-stone-400 flex items-center justify-center font-bold text-white uppercase shadow-inner">
+              <div className="h-10 w-10 rounded-full bg-stone-800 border border-stone-400 flex items-center justify-center font-bold text-white uppercase shadow-inner">
                 {userSession?.name.charAt(0)}
               </div>
               <button
                 onClick={handleLogoutAction}
-                className="ml-2 p-2 rounded-xl bg-maroon-900/40 hover:bg-red-950/80 transition text-stone-200 hover:text-white"
+                className="ml-2 p-2 rounded-xl bg-stone-900/40 hover:bg-red-950/80 transition text-stone-200 hover:text-white"
                 title="Log Out Session"
               >
                 <LogOut className="h-4 w-4" />
@@ -312,7 +310,7 @@ export default function InternalDashboard() {
             </div>
           </div>
 
-          {/* --- LEADERBOARD SECTION WITH LIVE STATS GREEN DOT --- */}
+          {/* --- LEADERBOARD SECTION WITH LIVE STATS --- */}
           <div className="lg:col-span-3 bg-white rounded-2xl p-6 shadow-md border border-stone-200/80">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
@@ -346,7 +344,7 @@ export default function InternalDashboard() {
                     return (
                       <tr 
                         key={member.id} 
-                        className={`group transition ${isCurrentUser ? 'bg-maroon-50/40 font-medium' : 'hover:bg-stone-50'}`}
+                        className={`group transition ${isCurrentUser ? 'bg-[#800020]/5 font-medium' : 'hover:bg-stone-50'}`}
                       >
                         <td className="py-3.5 text-center font-mono font-bold text-stone-500">
                           {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`}
