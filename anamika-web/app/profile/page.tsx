@@ -210,7 +210,7 @@ export default function ProfilePage() {
       <nav className="bg-[#800020] text-white shadow-lg sticky top-0 z-50 px-4 py-4 border-b border-stone-700">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link href="/dashboard" className="p-2 bg-stone-900/40 hover:bg-stone-900 rounded-xl transition text-stone-200 border border-stone-700/50">
+            <Link href="/" className="p-2 bg-stone-900/40 hover:bg-stone-900 rounded-xl transition text-stone-200 border border-stone-700/50">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
