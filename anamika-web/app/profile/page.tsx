@@ -36,7 +36,13 @@ export default function ProfilePage() {
       return;
     }
     const currentSession = JSON.parse(session);
-    const userId = currentSession.id.toLowerCase();
+    
+    // সেশন থেকে আইডি রিড করার সেইফগার্ড (relax_bro বা যেকোনো আইডি স্ট্রিং নিশ্চিত করা)
+    if (!currentSession || !currentSession.id) {
+      setErrorMsg('সেশন থেকে ইউজার আইডি লোড করা যায়নি!');
+      return;
+    }
+    const userId = String(currentSession.id).trim().toLowerCase();
 
     // ২. Firebase Firestore থেকে লাইভ প্রোফাইল ডাটা রিড করা
     const fetchProfileFromFirebase = async () => {
@@ -73,7 +79,7 @@ export default function ProfilePage() {
     fetchProfileFromFirebase();
   }, []);
 
-  // ৩. ছবিকে রিসাইজ ও কমপ্রেস করে Base64 বানানোর লজিক (Max 400x400px, JPEG Compression)
+  // ৩. ছবিকে অটো-রিসাইজ ও কমপ্রেস করে ছোট সাইজের Base64 বানানোর লজিক (Max 400x400px, JPEG 70%)
   const handleImageUploadAction = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
@@ -89,7 +95,6 @@ export default function ProfilePage() {
       img.src = event.target?.result as string;
       
       img.onload = () => {
-        // ক্যানভাস তৈরি করা রিসাইজিং এর জন্য
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
@@ -116,13 +121,13 @@ export default function ProfilePage() {
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
           
-          // কোয়ালিটি ০.৭ (৭০%) দিয়ে JPEG ফরম্যাটে কম্প্রেসড Base64 জেনারেট করা (সাইজ অনেক কমে যাবে)
+          // কোয়ালিটি ০.৭ (৭০%) দিয়ে JPEG ফরম্যাটে কম্প্রেসড Base64 জেনারেট করা (সাইজ নামবে ২০-৫০ KB তে)
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
           
           setProfile({ ...profile, image: compressedBase64 });
           setSuccessMsg('ছবি সফলভাবে অপ্টিমাইজ ও প্রসেস করা হয়েছে! প্রোফাইলটি সম্পূর্ণ সেভ করুন।');
         } else {
-          setErrorMsg('ছবি প্রসেস করতে টেকনিক্যাল সমস্যা হয়েছে।');
+          setErrorMsg('ছবি প্রসেস করতে কারিগরি সমস্যা হয়েছে।');
         }
         setImageUploading(false);
       };
@@ -140,36 +145,48 @@ export default function ProfilePage() {
     };
   };
 
-  // ৪. ফর্ম সাবমিশন এবং Firestore ডকুমেন্ট মার্জিং আপডেট
+  // ৪. ফর্ম সাবমিশন এবং Firestore ডকুমেন্ট মার্জিং আপডেট (Underscore ID & Type Error Fixed)
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profile) return;
+    
+    if (!profile || !profile.id) {
+      setErrorMsg('ইউজার আইডি পাওয়া যায়নি! দয়া করে পেজটি রিফ্রেশ করে আবার ট্রাই করুন।');
+      return;
+    }
+    
     setIsSaving(true);
     setSuccessMsg('');
     setErrorMsg('');
 
     try {
+      // আইডি স্ট্রিং কাস্টিং ও ফরম্যাট প্রিজারভেশন (যেমন: relax_bro)
+      const rawId = String(profile.id).trim();
+      if (!rawId) {
+        throw new Error("ইউজার আইডি সম্পূর্ণ খালি বা অবৈধ।");
+      }
+      const cleanId = rawId.toLowerCase(); 
+
       // --- Undefined বা খালি ডাটা ফিল্টারিং সেইফগার্ড ---
       const cleanProfile: Record<string, any> = {
-        id: profile.id.toLowerCase(),
-        name: profile.name || "",
-        role: profile.role || "Creative Designer",
+        id: cleanId,
+        name: profile.name ? String(profile.name).trim() : "Syed Fahim Muddasir",
+        role: profile.role ? String(profile.role).trim() : "Creative Designer",
         category: profile.category || "CREATIVE",
         image: profile.image || "/logo.png",
-        newsCardCount: profile.newsCardCount || 0,
-        email: profile.email || "",
-        github: profile.github || "",
-        linkedin: profile.linkedin || "",
-        website: profile.website || "",
-        password: profile.password || ""
+        newsCardCount: typeof profile.newsCardCount === 'number' ? profile.newsCardCount : 0,
+        email: profile.email ? String(profile.email).trim() : "",
+        github: profile.github ? String(profile.github).trim() : "",
+        linkedin: profile.linkedin ? String(profile.linkedin).trim() : "",
+        website: profile.website ? String(profile.website).trim() : "",
+        password: profile.password ? String(profile.password).trim() : ""
       };
 
-      // Firestore-এ মেম্বার আইডি অনুযায়ী ডেটা রাইট করা
-      await setDoc(doc(db, "members", cleanProfile.id), cleanProfile, { merge: true });
+      // ফায়ারস্টোরে নির্দিষ্ট মেম্বার আইডিতে ডাটা সেভ বা মার্জ করা
+      await setDoc(doc(db, "members", cleanId), cleanProfile, { merge: true });
       setSuccessMsg('প্রোফাইল এবং সিকিউরিটি সেটিংস সফলভাবে ক্লাউডে আপডেট হয়েছে!');
     } catch (error: any) {
       console.error("Firebase write error detailed:", error);
-      setErrorMsg(`ডাটা সেভ করা যায়নি। ফায়ারবেস রেসপন্স: ${error.message || 'ডকুমেন্ট সাইজ বা রুলস জটিলতা।'}`);
+      setErrorMsg(`ডাটা সেভ করা যায়নি। ফায়ারবেস রেসপন্স: ${error.message || 'আইডি ফরম্যাট গত সমস্যা।'}`);
     } finally {
       setIsSaving(false);
     }
@@ -244,7 +261,7 @@ export default function ProfilePage() {
               <input type="text" value={profile.role || ''} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" required />
             </div>
 
-            {/* ছবি আপলোড বাটন (যেকোনো সাইজ অটো হ্যান্ডেল হবে) */}
+            {/* ছবি আপলোড বাটন */}
             <div>
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">প্রোফাইল পিকচার (অটো-কমপ্রেসড)</label>
               <input 
@@ -320,7 +337,7 @@ export default function ProfilePage() {
             className="w-full bg-[#c1121f] hover:bg-red-700 disabled:bg-stone-800 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-[#c1121f]/10"
           >
             {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-            <span>Proflie & Data Save Krun</span>
+            <span>প্রোফাইল ও ডেটা সেভ করুন</span>
           </button>
         </form>
       </main>
