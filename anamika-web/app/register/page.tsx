@@ -83,7 +83,7 @@ export default function RegisterMember() {
         
         {/* Header section */}
         <div className="bg-gradient-to-r from-[#600018] to-[#800020] p-6 text-center text-white flex flex-col items-center relative">
-          <Link href="/dashboard" className="absolute left-4 top-6 text-stone-200 hover:text-white transition flex items-center space-x-1 text-xs">
+          <Link href="/" className="absolute left-4 top-6 text-stone-200 hover:text-white transition flex items-center space-x-1 text-xs">
             <ArrowLeft className="h-4 w-4" />
             <span className="hidden sm:inline">Back</span>
           </Link>
