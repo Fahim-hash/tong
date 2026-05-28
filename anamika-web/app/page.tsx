@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Newspaper, LayoutDashboard, FilePlus2, Users, Settings, ArrowRight, Lock, User, LogOut, Loader2, Trophy } from 'lucide-react';
 // Firebase ইম্পোর্ট করুন
-import { db } from '@/lib/firebase'; // আপনার সঠিক পাথ দিন
+import { db } from './lib/firebase'; // আপনার সঠিক পাথ দিন
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 interface Member {
