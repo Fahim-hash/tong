@@ -4,12 +4,15 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Newspaper, LayoutDashboard, FilePlus2, Users, Settings, ArrowRight, Lock, User, LogOut, Loader2, Trophy } from 'lucide-react';
+// Firebase ইম্পোর্ট করুন
+import { db } from '@/lib/firebase'; // আপনার সঠিক পাথ দিন
+import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 interface Member {
   id: string;
   name: string;
   pass: string;
-  cardsGenerated?: number; // Added to capture leaderboard ranking stats
+  cardsGenerated?: number; 
 }
 
 export default function InternalDashboard() {
@@ -23,7 +26,7 @@ export default function InternalDashboard() {
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
-  // Check global authentication state and fetch leaderboard stats on mount
+  // Authentication logic on mount
   useEffect(() => {
     const session = localStorage.getItem('tk_user_session');
     if (session) {
@@ -34,37 +37,45 @@ export default function InternalDashboard() {
       setIsAuthenticated(false);
     }
 
-    // Prefetch members list data for leaderboard calculations
-    fetch('/data/info.json')
-      .then((res) => {
-        if (res.ok) return res.json();
-        return [];
-      })
-      .then((data: Member[]) => {
-        // Map mock values if cardsGenerated doesn't exist in json file yet
-        const enrichedData = data.map((member, idx) => ({
-          ...member,
-          cardsGenerated: member.cardsGenerated ?? Math.max(12 - idx * 3, 2),
-        }));
-        // Sort based on generation numbers descending
-        setMembers(enrichedData.sort((a, b) => (b.cardsGenerated || 0) - (a.cardsGenerated || 0)));
-      })
-      .catch(() => {});
+    // --- FIREBASE FIRESTORE LIVE LEADERBOARD CONNECTIVITY ---
+    // Firestore-এর 'members' কালেকশন থেকে 'cardsGenerated' অনুযায়ী desc অর্ডারে কুয়েরি করা হচ্ছে
+    const membersQuery = query(collection(db, 'members'), orderBy('cardsGenerated', 'desc'));
+
+    // onSnapshot রিয়েল-টাইম ডেটা লিসেন করে
+    const unsubscribe = onSnapshot(membersQuery, (snapshot) => {
+      const memberList: Member[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        memberList.push({
+          id: doc.id, // অথবা data.id (আপনার ডেটাবেস ডিজাইন অনুযায়ী)
+          name: data.name || 'Unknown',
+          pass: data.pass || '',
+          cardsGenerated: data.cardsGenerated || 0
+        });
+      });
+      setMembers(memberList);
+    }, (error) => {
+      console.error("Firebase fetch error: ", error);
+    });
+
+    // Component unmount হলে listener বন্ধ করার জন্য cleanup function
+    return () => unsubscribe();
   }, []);
 
-  // Handle local login submission matching against public/data/info.json
+  // Handle local login submission matching against Firebase data or static data
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoggingIn(true);
 
     try {
+      // লগইন ভ্যালিডেশন এখনো আপনার স্থানীয় JSON ফাইল থেকে কাজ করবে 
+      // (যদি মেম্বারদের পাসওয়ার্ড সিকিউর করতে চান, তবে পরবর্তীতে Firebase Auth ব্যবহার করা ভালো)
       const res = await fetch('/data/info.json');
       if (!res.ok) throw new Error('Failed to load user credentials file.');
       
       const membersList: Member[] = await res.json();
       
-      // Match ID and Password matching conditions
       const matchedUser = membersList.find(
         (member) => member.id.toLowerCase() === userIdInput.trim().toLowerCase() && member.pass === passwordInput
       );
@@ -84,7 +95,6 @@ export default function InternalDashboard() {
     }
   };
 
-  // Terminate authentication context
   const handleLogoutAction = () => {
     localStorage.removeItem('tk_user_session');
     setUserSession(null);
@@ -93,7 +103,6 @@ export default function InternalDashboard() {
     setPasswordInput('');
   };
 
-  // Fallback Loading screen while checking authentication credentials state
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center">
@@ -103,15 +112,12 @@ export default function InternalDashboard() {
     );
   }
 
-  // --- RENDERING ROUTE PROTECTION: GATED LOGIN SCREEN ---
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-stone-200 overflow-hidden">
           
-          {/* Header Brand Branding Section */}
           <div className="bg-gradient-to-r from-[#600018] to-[#800020] p-8 text-center text-white flex flex-col items-center">
-            {/* PNG Logo Integration - Resized for optimal clarity */}
             <div className="mb-4 transform transition hover:scale-105 duration-200 drop-shadow-md">
               <Image 
                 src="/logo2.png" 
@@ -126,7 +132,6 @@ export default function InternalDashboard() {
             <p className="text-stone-200 text-xs uppercase tracking-widest mt-1">Gated Internal System</p>
           </div>
 
-          {/* Form Processing */}
           <form onSubmit={handleLoginSubmit} className="p-6 sm:p-8 space-y-5">
             {errorMsg && (
               <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-4 py-3 rounded-xl font-medium">
@@ -199,7 +204,6 @@ export default function InternalDashboard() {
     );
   }
 
-  // --- RENDERING ROUTE PROTECTION: AUTHENTICATED INTERNAL DASHBOARD ---
   return (
     <div className="min-h-screen bg-stone-50 font-sans text-stone-800 flex flex-col">
       
@@ -208,9 +212,7 @@ export default function InternalDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             
-            {/* Logo Section */}
             <div className="flex items-center space-x-3">
-              {/* PNG Logo Integration inside Dashboard Navbar */}
               <div className="p-1 bg-white/10 rounded-lg flex items-center justify-center">
                 <Image 
                   src="/logo.png" 
@@ -226,7 +228,6 @@ export default function InternalDashboard() {
               </div>
             </div>
 
-            {/* Profile Info & Secure Logout Trigger */}
             <div className="flex items-center space-x-4">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold tracking-wide text-white">{userSession?.name}</p>
@@ -251,7 +252,6 @@ export default function InternalDashboard() {
       {/* --- MAIN BODY --- */}
       <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-10">
         
-        {/* Welcome Banner */}
         <div className="bg-gradient-to-r from-[#600018] to-[#800020] text-white rounded-2xl p-6 sm:p-8 shadow-xl mb-10">
           <h1 className="text-2xl sm:text-3xl font-extrabold mb-2">Welcome Back, {userSession?.name}! ☕</h1>
           <p className="text-stone-200 text-sm sm:text-base max-w-2xl">
@@ -259,10 +259,8 @@ export default function InternalDashboard() {
           </p>
         </div>
 
-        {/* --- MAIN ACTION SECTION --- */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Highlighted Tool: News Card Generator */}
           <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-md border border-stone-200/80 flex flex-col justify-between transform transition duration-300 hover:shadow-lg">
             <div>
               <div className="h-12 w-12 bg-[#800020]/10 rounded-xl flex items-center justify-center text-[#800020] mb-4">
@@ -274,7 +272,6 @@ export default function InternalDashboard() {
               </p>
             </div>
             
-            {/* Button directing to generator page */}
             <Link href="/newscard">
               <button className="w-full sm:w-auto bg-[#800020] hover:bg-[#600018] text-white font-semibold px-6 py-3 rounded-xl shadow-md transition duration-200 flex items-center justify-center space-x-2 group">
                 <span>Generate News Card</span>
@@ -283,7 +280,6 @@ export default function InternalDashboard() {
             </Link>
           </div>
 
-          {/* Quick Shortcuts / Info Panel */}
           <div className="bg-white rounded-2xl p-6 shadow-md border border-stone-200/80 flex flex-col justify-between">
             <div>
               <h3 className="text-lg font-bold text-stone-900 mb-4 flex items-center space-x-2">
@@ -297,7 +293,6 @@ export default function InternalDashboard() {
                   <span>Draft New Article</span>
                 </button>
                 
-                {/* লিংক করা টিম ডিরেক্টরি বাটন */}
                 <Link href="/team" className="block w-full">
                   <button type="button" className="w-full flex items-center space-x-3 p-3 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-left text-sm font-medium transition">
                     <Users className="h-4 w-4 text-stone-600" />
@@ -317,7 +312,7 @@ export default function InternalDashboard() {
             </div>
           </div>
 
-          {/* --- NEW SECTION: NEWSCARD LEADERBOARD --- */}
+          {/* --- LEADERBOARD SECTION WITH LIVE STATS GREEN DOT --- */}
           <div className="lg:col-span-3 bg-white rounded-2xl p-6 shadow-md border border-stone-200/80">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-3">
@@ -329,7 +324,8 @@ export default function InternalDashboard() {
                   <p className="text-stone-500 text-xs">Top ranking internal members by cards generated</p>
                 </div>
               </div>
-              <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-stone-100 text-stone-800">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200 animate-pulse">
+                <span className="w-1.5 h-1.5 mr-1.5 bg-green-500 rounded-full"></span>
                 Live Stats
               </span>
             </div>
@@ -376,10 +372,8 @@ export default function InternalDashboard() {
           </div>
 
         </div>
-
       </main>
 
-      {/* --- FOOTER --- */}
       <footer className="bg-stone-900 text-stone-400 py-6 text-center text-xs border-t border-stone-800">
         <p>&copy; {new Date().getFullYear()} TongerKhobor. All rights reserved. Internal Use Only.</p>
       </footer>
