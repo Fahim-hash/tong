@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Newspaper, LayoutDashboard, FilePlus2, Users, Settings, ArrowRight, Lock, User, LogOut, Loader2, Trophy } from 'lucide-react';
-// Firebase ইম্পোর্ট
+// Firebase ইম্পোর্টস
 import { db } from './lib/firebase'; // আপনার সঠিক পাথ নিশ্চিত করুন
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, getDoc } from 'firebase/firestore';
 
 interface Member {
   id: string;
@@ -38,7 +38,6 @@ export default function InternalDashboard() {
     }
 
     // --- FIREBASE FIRESTORE LIVE LEADERBOARD CONNECTIVITY ---
-    // image_a1217b.png অনুযায়ী সঠিক ফিল্ড 'newsCardCount' দিয়ে desc অর্ডারে কুয়েরি করা হচ্ছে
     const membersQuery = query(collection(db, 'members'), orderBy('newsCardCount', 'desc'));
 
     // onSnapshot রিয়েল-টাইম ডেটা লিসেন করে
@@ -49,8 +48,8 @@ export default function InternalDashboard() {
         memberList.push({
           id: doc.id, 
           name: data.name || 'Unknown',
-          pass: data.password || '', // image_a1217b.png অনুযায়ী 'password' ফিল্ড ম্যাপিং
-          cardsGenerated: data.newsCardCount || 0 // image_a1217b.png অনুযায়ী 'newsCardCount' ফিল্ড ম্যাপিং
+          pass: data.password || '', // কালেকশনের 'password' ফিল্ড ম্যাপিং
+          cardsGenerated: data.newsCardCount || 0 // কালেকশনের 'newsCardCount' ফিল্ড ম্যাপিং
         });
       });
       setMembers(memberList);
@@ -62,24 +61,37 @@ export default function InternalDashboard() {
     return () => unsubscribe();
   }, []);
 
-  // Handle local login submission matching against static data
+  // Handle Firebase Firestore Login Submission
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setIsLoggingIn(true);
 
-    try {
-      const res = await fetch('/data/info.json');
-      if (!res.ok) throw new Error('Failed to load user credentials file.');
-      
-      const membersList: Member[] = await res.json();
-      
-      const matchedUser = membersList.find(
-        (member) => member.id.toLowerCase() === userIdInput.trim().toLowerCase() && member.pass === passwordInput
-      );
+    // আইডি লোয়ারকেস ও ট্রিম করে নেওয়া হচ্ছে যাতে ম্যাচিং নিখুঁত হয়
+    const cleanedId = userIdInput.trim().toLowerCase();
 
-      if (matchedUser) {
-        const structuralSession = { id: matchedUser.id, name: matchedUser.name };
+    try {
+      // ১. সরাসরি Firestore এর 'members' কালেকশন থেকে ওই ID-র ডকুমেন্ট রেফারেন্স নেওয়া হচ্ছে
+      const memberDocRef = doc(db, 'members', cleanedId);
+      const memberDocSnap = await getDoc(memberDocRef);
+
+      // ২. মেম্বার আইডি সিস্টেমে এক্সিস্ট করে কি না চেক
+      if (!memberDocSnap.exists()) {
+        setErrorMsg('Invalid ID or Password. Access denied.');
+        setIsLoggingIn(false);
+        return;
+      }
+
+      const userData = memberDocSnap.data();
+
+      // ৩. পাসওয়ার্ড ম্যাচ করানো হচ্ছে (Firestore এর 'password' ফিল্ডের সাথে)
+      if (userData.password === passwordInput) {
+        const structuralSession = { 
+          id: memberDocSnap.id, 
+          name: userData.name || 'Unknown Member' 
+        };
+        
+        // লোকাল সেশন সেট করা
         localStorage.setItem('tk_user_session', JSON.stringify(structuralSession));
         setUserSession(structuralSession);
         setIsAuthenticated(true);
@@ -87,6 +99,7 @@ export default function InternalDashboard() {
         setErrorMsg('Invalid ID or Password. Access denied.');
       }
     } catch (err) {
+      console.error('Firebase Auth Error:', err);
       setErrorMsg('System error verifying credentials. Contact administrator.');
     } finally {
       setIsLoggingIn(false);
