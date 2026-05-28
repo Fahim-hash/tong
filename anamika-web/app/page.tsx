@@ -13,12 +13,14 @@ interface Member {
   name: string;
   pass: string;
   cardsGenerated?: number; 
+  image?: string;
 }
 
 export default function InternalDashboard() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [userSession, setUserSession] = useState<{ id: string; name: string } | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [currentUserData, setCurrentUserData] = useState<Member | null>(null);
   
   // Login input states
   const [userIdInput, setUserIdInput] = useState('');
@@ -49,17 +51,27 @@ export default function InternalDashboard() {
           id: doc.id, 
           name: data.name || 'Unknown',
           pass: data.password || '', // কালেকশনের 'password' ফিল্ড ম্যাপিং
-          cardsGenerated: data.newsCardCount || 0 // কালেকশনের 'newsCardCount' ফিল্ড ম্যাপিং
+          cardsGenerated: data.newsCardCount || 0, // কালেকশনের 'newsCardCount' ফিল্ড ম্যাপিং
+          image: data.image || ''
         });
       });
       setMembers(memberList);
+
+      // সেশন ইউজারের ডেটা লাইভ ফিল্টার করা
+      if (session) {
+        const parsed = JSON.parse(session);
+        const current = memberList.find(m => m.id === parsed.id);
+        if (current) {
+          setCurrentUserData(current);
+        }
+      }
     }, (error) => {
       console.error("Firebase fetch error: ", error);
     });
 
     // Component unmount হলে listener বন্ধ করার জন্য cleanup function
     return () => unsubscribe();
-  }, []);
+  }, [isAuthenticated]);
 
   // Handle Firebase Firestore Login Submission
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -67,11 +79,11 @@ export default function InternalDashboard() {
     setErrorMsg('');
     setIsLoggingIn(true);
 
-    // আইডি লোয়ারকেস ও ট্রিম করে নেওয়া হচ্ছে যাতে ম্যাচিং নিখুঁত হয়
+    // আইডি লোয়ারকেস ও ট্রিম করে নেওয়া হচ্ছে যাতে ম্যাচিং নিখুঁত হয়
     const cleanedId = userIdInput.trim().toLowerCase();
 
     try {
-      // ১. সরাসরি Firestore এর 'members' কালেকশন থেকে ওই ID-র ডকুমেন্ট রেফারেন্স নেওয়া হচ্ছে
+      // ১. সরাসরি Firestore এর 'members' কালেকশন থেকে ওই ID-র ডকুমেন্ট রেফারেন্স নেওয়া হচ্ছে
       const memberDocRef = doc(db, 'members', cleanedId);
       const memberDocSnap = await getDoc(memberDocRef);
 
@@ -84,7 +96,7 @@ export default function InternalDashboard() {
 
       const userData = memberDocSnap.data();
 
-      // ৩. পাসওয়ার্ড ম্যাচ করানো হচ্ছে (Firestore এর 'password' ফিল্ডের সাথে)
+      // ৩. পাসওয়ার্ড ম্যাচ করানো হচ্ছে (Firestore এর 'password' ফিল্ডের সাথে)
       if (userData.password === passwordInput) {
         const structuralSession = { 
           id: memberDocSnap.id, 
@@ -109,6 +121,7 @@ export default function InternalDashboard() {
   const handleLogoutAction = () => {
     localStorage.removeItem('tk_user_session');
     setUserSession(null);
+    setCurrentUserData(null);
     setIsAuthenticated(false);
     setUserIdInput('');
     setPasswordInput('');
@@ -240,13 +253,27 @@ export default function InternalDashboard() {
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold tracking-wide text-white">{userSession?.name}</p>
-                <p className="text-xs text-stone-300 font-mono">ID: {userSession?.id}</p>
-              </div>
-              <div className="h-10 w-10 rounded-full bg-stone-800 border border-stone-400 flex items-center justify-center font-bold text-white uppercase shadow-inner">
-                {userSession?.name.charAt(0)}
-              </div>
+              <Link href="/profile" className="flex items-center space-x-3 group cursor-pointer">
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-bold tracking-wide text-white group-hover:text-amber-400 transition">{userSession?.name}</p>
+                  <p className="text-xs text-stone-300 font-mono">ID: {userSession?.id}</p>
+                </div>
+                
+                {/* প্রোফাইল পিকচার ইন্টিগ্রেশন এবং ক্লিকেবল জোন */}
+                <div className="h-10 w-10 rounded-full bg-stone-800 border border-stone-400 flex items-center justify-center font-bold text-white uppercase shadow-inner relative overflow-hidden group-hover:border-amber-400 transition">
+                  {currentUserData?.image ? (
+                    <Image 
+                      src={currentUserData.image} 
+                      alt="User Profile" 
+                      fill 
+                      className="object-cover"
+                    />
+                  ) : (
+                    <span>{userSession?.name.charAt(0)}</span>
+                  )}
+                </div>
+              </Link>
+
               <button
                 onClick={handleLogoutAction}
                 className="ml-2 p-2 rounded-xl bg-stone-900/40 hover:bg-red-950/80 transition text-stone-200 hover:text-white"
@@ -311,10 +338,12 @@ export default function InternalDashboard() {
                   </button>
                 </Link>
 
-                <button type="button" className="w-full flex items-center space-x-3 p-3 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-left text-sm font-medium transition">
-                  <Settings className="h-4 w-4 text-stone-600" />
-                  <span>System Settings</span>
-                </button>
+                <Link href="/profile" className="block w-full">
+                  <button type="button" className="w-full flex items-center space-x-3 p-3 rounded-xl bg-stone-50 hover:bg-stone-100 border border-stone-200 text-left text-sm font-medium transition text-stone-800">
+                    <Settings className="h-4 w-4 text-stone-600" />
+                    <span>System Settings (Profile)</span>
+                  </button>
+                </Link>
               </div>
             </div>
 
@@ -363,7 +392,14 @@ export default function InternalDashboard() {
                           {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}`}
                         </td>
                         <td className="py-3.5 text-stone-900 font-medium">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-3">
+                            <div className="h-7 w-7 rounded-full bg-stone-200 border border-stone-300 flex items-center justify-center font-bold text-stone-700 uppercase relative overflow-hidden text-[11px]">
+                              {member.image ? (
+                                <Image src={member.image} alt={member.name} fill className="object-cover" />
+                              ) : (
+                                <span>{member.name.charAt(0)}</span>
+                              )}
+                            </div>
                             <span>{member.name}</span>
                             {isCurrentUser && (
                               <span className="bg-[#800020] text-white text-[10px] px-1.5 py-0.5 rounded font-sans uppercase">You</span>
