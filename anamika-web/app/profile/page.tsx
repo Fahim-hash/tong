@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { db } from '../lib/firebase'; 
+import Link from 'react';
+import Image from 'next/image';
+import { db } from './lib/firebase'; // আপনার প্রোজেক্ট স্ট্রাকচার অনুযায়ী পাথ নিশ্চিত করুন
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ArrowLeft, Save, Sparkles, Loader2, Upload, Lock } from 'lucide-react';
 
+// ড্যাশবোর্ডের সাথে মিল রেখে ইন্টারফেস স্ট্রাকচার
 interface UserProfile {
   id: string;
   name: string;
@@ -21,6 +23,7 @@ interface UserProfile {
 }
 
 export default function ProfilePage() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [imageUploading, setImageUploading] = useState(false);
@@ -29,32 +32,49 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // ১. কারেন্ট লগইন সেশন ভেরিফিকেশন
+    // ড্যাশবোর্ডের মতো হুবহু একই উপায়ে লোকাল সেশন থেকে ID ও Name রিড করা হচ্ছে
     const session = localStorage.getItem('tk_user_session');
     if (!session) {
       window.location.href = '/'; 
       return;
     }
-    const currentSession = JSON.parse(session);
     
+    const currentSession = JSON.parse(session);
     if (!currentSession || !currentSession.id) {
-      setErrorMsg('সেশন থেকে ইউজার আইডি লোড করা যায়নি!');
+      setErrorMsg('Session configuration missing or corrupted.');
+      setIsAuthenticated(false);
       return;
     }
-    const userId = String(currentSession.id).trim().toLowerCase();
 
-    // ২. Firebase Firestore থেকে লাইভ প্রোফাইল ডাটা রিড করা
+    setIsAuthenticated(true);
+    // আইডি লোয়ারকেস ও ট্রিম করে নিখুঁত পাথ জেনারেট করা (e.g., relax_bro)
+    const cleanedUserId = String(currentSession.id).trim().toLowerCase();
+
+    // Firebase Firestore থেকে মেম্বার ডেটা ফেচ করা
     const fetchProfileFromFirebase = async () => {
       try {
-        const docRef = doc(db, "members", userId);
-        const docSnap = await getDoc(docRef);
+        const memberDocRef = doc(db, 'members', cleanedUserId);
+        const memberDocSnap = await getDoc(memberDocRef);
 
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as UserProfile);
+        if (memberDocSnap.exists()) {
+          const userData = memberDocSnap.data();
+          setProfile({
+            id: cleanedUserId,
+            name: userData.name || currentSession.name || 'Unknown Member',
+            role: userData.role || 'Creative Designer',
+            category: userData.category || 'CREATIVE',
+            image: userData.image || '/logo.png',
+            newsCardCount: userData.newsCardCount || 0,
+            email: userData.email || '',
+            github: userData.github || '',
+            linkedin: userData.linkedin || '',
+            website: userData.website || '',
+            password: userData.password || ''
+          });
         } else {
-          // ডেটাবেসে প্রথমবার এন্ট্রি হলে ডিফল্ট অবজেক্ট জেনারেট হবে
+          // কোনো কারণে ক্লাউডে ডাটা না থাকলে ড্যাশবোর্ড সেশন অনুযায়ী ফ্রেশ স্ট্রাকচার জেনারেট হবে
           const defaultProfile: UserProfile = {
-            id: userId,
+            id: cleanedUserId,
             name: currentSession.name || "New Member",
             role: "Creative Designer",
             category: "CREATIVE",
@@ -66,19 +86,19 @@ export default function ProfilePage() {
             website: "",
             password: ""
           };
-          await setDoc(docRef, defaultProfile);
+          await setDoc(memberDocRef, defaultProfile);
           setProfile(defaultProfile);
         }
       } catch (error) {
-        console.error("Firebase fetch error:", error);
-        setErrorMsg('ফায়ারবেস থেকে ডাটা লোড করতে সমস্যা হচ্ছে।');
+        console.error("Firebase live fetch error:", error);
+        setErrorMsg('System error connecting to Firestore infrastructure.');
       }
     };
 
     fetchProfileFromFirebase();
   }, []);
 
-  // ৩. ছবিকে অটো-রিসাইজ ও কমপ্রেস করে ছোট সাইজের Base64 বানানোর লজিক (Max 400x400px, JPEG 70%)
+  // ইমেজ অটো-কম্প্রেস ও লাইটওয়েট Base64 জেনারেশন লজিক
   const handleImageUploadAction = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
@@ -97,7 +117,6 @@ export default function ProfilePage() {
         const canvas = document.createElement('canvas');
         let width = img.width;
         let height = img.height;
-
         const MAX_SIZE = 400; 
         
         if (width > height) {
@@ -114,41 +133,26 @@ export default function ProfilePage() {
 
         canvas.width = width;
         canvas.height = height;
-
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          
-          // কোয়ালিটি ০.৭ দিয়ে JPEG কমপ্রেশন (সাইজ নামবে ২০-৫০ KB তে)
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-          
           setProfile({ ...profile, image: compressedBase64 });
-          setSuccessMsg('ছবি সফলভাবে অপ্টিমাইজ ও প্রসেস করা হয়েছে! প্রোফাইলটি সম্পূর্ণ সেভ করুন।');
+          setSuccessMsg('Image optimized successfully! Remember to save profile updates.');
         } else {
-          setErrorMsg('ছবি প্রসেস করতে কারিগরি সমস্যা হয়েছে।');
+          setErrorMsg('Error rendering canvas engine.');
         }
         setImageUploading(false);
       };
-
-      img.onerror = () => {
-        setErrorMsg('ইমেজ লোড করতে সমস্যা হয়েছে।');
-        setImageUploading(false);
-      };
-    };
-    
-    reader.onerror = (error) => {
-      console.error("Error converting image:", error);
-      setErrorMsg('ফাইল রিড করতে সমস্যা হয়েছে।');
-      setImageUploading(false);
     };
   };
 
-  // ৪. ফর্ম সাবমিশন এবং Firestore ডকুমেন্ট চেকিং ও সেভিং আপডেট (cleanedId লজিকসহ)
+  // সাবমিট করার সময় ড্যাশবোর্ডের মতো সেইম মেম্বার ডক স্ন্যাপশট ও ক্লিন আইডি ম্যাচিং
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!profile || !profile.id) {
-      setErrorMsg('ইউজার আইডি পাওয়া যায়নি! দয়া করে পেজটি রিফ্রেশ করে আবার ট্রাই করুন।');
+      setErrorMsg('Authentication identity missing.');
       return;
     }
     
@@ -157,20 +161,15 @@ export default function ProfilePage() {
     setErrorMsg('');
 
     try {
-      // আইডি স্ট্রিং কাস্টিং ও ফরম্যাট প্রিজারভেশন (যেমন: relax_bro)
       const cleanedId = String(profile.id).trim().toLowerCase();
-      if (!cleanedId) {
-        throw new Error("ইউজার আইডি সম্পূর্ণ খালি বা অবৈধ।");
-      }
-
-      // নির্দিষ্ট মেম্বার ডকুমেন্ট রেফারেন্স এবং স্ন্যাপশট চেকিং
+      
+      // ড্যাশবোর্ডের মতো স্পেসিফিক মেম্বার ডকুমেন্ট স্ন্যাপশট কলিং
       const memberDocRef = doc(db, 'members', cleanedId);
       const memberDocSnap = await getDoc(memberDocRef);
 
-      // --- Undefined বা খালি ডাটা ফিল্টারিং সেইফগার্ড ---
       const cleanProfile: Record<string, any> = {
         id: cleanedId,
-        name: profile.name ? String(profile.name).trim() : "Syed Fahim Muddasir",
+        name: profile.name ? String(profile.name).trim() : "New Member",
         role: profile.role ? String(profile.role).trim() : "Creative Designer",
         category: profile.category || "CREATIVE",
         image: profile.image || "/logo.png",
@@ -182,125 +181,118 @@ export default function ProfilePage() {
         password: profile.password ? String(profile.password).trim() : ""
       };
 
-      // যদি ডকুমেন্টটি আগে থেকেই ফায়ারবেসে থাকে, তবে সেফলি মার্জ হবে
       if (memberDocSnap.exists()) {
         await setDoc(memberDocRef, cleanProfile, { merge: true });
       } else {
-        // নতুন মেম্বার হলে ফ্রেশ ডকুমেন্ট ক্রিয়েট হবে
         await setDoc(memberDocRef, cleanProfile);
       }
       
-      setSuccessMsg('প্রোফাইল এবং সিকিউরিটি সেটিংস সফলভাবে ক্লাউডে আপডেট হয়েছে!');
+      setSuccessMsg('Profile and access credentials successfully synchronized on cloud!');
     } catch (error: any) {
-      console.error("Firebase write error detailed:", error);
-      setErrorMsg(`ডাটা সেভ করা যায়নি। ফায়ারবেস রেসপন্স: ${error.message || 'ডকুমেন্ট পাথ বা আইডি রিডিং এরর।'}`);
+      console.error("Firestore submission error:", error);
+      setErrorMsg('Failed to overwrite document parameters.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  if (!profile) {
+  if (isAuthenticated === null || !profile) {
     return (
-      <div className="min-h-screen bg-[#090d14] flex flex-col items-center justify-center">
-        <Loader2 className="h-8 w-8 text-[#c1121f] animate-spin mb-2" />
-        <p className="text-xs font-mono text-stone-500 tracking-widest uppercase">Connecting Firebase Infrastructure...</p>
+      <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center">
+        <Loader2 className="h-8 w-8 text-[#800020] animate-spin mb-2" />
+        <p className="text-xs font-mono text-stone-500 tracking-widest uppercase">Fetching Identity Credentials...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#090d14] font-sans text-stone-200 pb-16">
-      <div className="bg-[#090d14]/90 border-b border-stone-800 sticky top-0 z-50 px-4 py-4 backdrop-blur-md">
+    <div className="min-h-screen bg-stone-50 font-sans text-stone-800 pb-16">
+      {/* NAVBAR */}
+      <nav className="bg-[#800020] text-white shadow-lg sticky top-0 z-50 px-4 py-4 border-b border-stone-700">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link href="/dashboard" className="p-2 bg-stone-900 hover:bg-stone-800 rounded-xl transition text-stone-400 border border-stone-800">
+            <Link href="/dashboard" className="p-2 bg-stone-900/40 hover:bg-stone-900 rounded-xl transition text-stone-200 border border-stone-700/50">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-xl font-black text-white flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-[#c1121f]" /> প্রোফাইল সেটিংস
+              <h1 className="text-lg font-bold text-white flex items-center gap-2 tracking-wide">
+                <Sparkles className="h-5 w-5 text-amber-400" /> Profile Configurations
               </h1>
             </div>
           </div>
         </div>
-      </div>
+      </nav>
 
+      {/* MAIN CONTENT */}
       <main className="max-w-3xl mx-auto px-4 mt-10">
-        <form onSubmit={handleProfileSave} className="bg-stone-950 border border-stone-800 rounded-2xl p-6 sm:p-8 space-y-6 shadow-2xl">
+        <form onSubmit={handleProfileSave} className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl">
           
           {successMsg && (
-            <div className="bg-emerald-950/50 border border-emerald-800 text-emerald-400 text-sm px-4 py-3 rounded-xl font-medium">
+            <div className="bg-green-50 border border-green-200 text-green-700 text-xs px-4 py-3 rounded-xl font-medium">
               {successMsg}
             </div>
           )}
 
           {errorMsg && (
-            <div className="bg-rose-950/50 border border-rose-800 text-rose-400 text-sm px-4 py-3 rounded-xl font-medium">
+            <div className="bg-red-50 border border-red-200 text-red-700 text-xs px-4 py-3 rounded-xl font-medium">
               {errorMsg}
             </div>
           )}
 
-          {/* অবতার ভিউ এবং রিয়েল-টাইম নিউজ কার্ড কাউন্টার প্যানেлы */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-900">
+          {/* AVATAR & ANALYTICS HEADER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100">
             <div className="flex items-center space-x-4">
-              <img src={profile.image || "/logo.png"} alt="Profile" className="w-16 h-16 rounded-full object-cover border border-stone-700 bg-stone-900" />
+              <img src={profile.image || "/logo.png"} alt="Profile Avatar" className="w-16 h-16 rounded-full object-cover border border-stone-300 bg-stone-100 shadow-inner" />
               <div>
-                <h3 className="text-lg font-bold text-white">{profile.name}</h3>
-                <p className="text-xs text-stone-500 font-mono">Member ID: {profile.id}</p>
+                <h3 className="text-lg font-bold text-stone-900">{profile.name}</h3>
+                <p className="text-xs text-stone-400 font-mono">System Identity Document: {profile.id}</p>
               </div>
             </div>
             
-            {/* লাইভ অ্যানালিটিক্স ডিসপ্লে */}
-            <div className="bg-stone-900 border border-stone-800 px-5 py-3 rounded-xl text-center sm:text-right">
-              <p className="text-[10px] uppercase tracking-widest text-stone-400 font-bold">News Cards Generated</p>
-              <p className="text-2xl font-black text-[#fbbf24] mt-0.5">{profile.newsCardCount || 0}টি</p>
+            <div className="bg-stone-50 border border-stone-200 px-5 py-3 rounded-xl text-center sm:text-right shadow-sm">
+              <p className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">News Cards Generated</p>
+              <p className="text-2xl font-black text-[#800020] mt-0.5">{profile.newsCardCount} units</p>
             </div>
           </div>
 
+          {/* CONTENT INPUTS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">পুরো নাম</label>
-              <input type="text" value={profile.name || ''} onChange={e => setProfile({...profile, name: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" required />
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Display Name</label>
+              <input type="text" value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" required />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">পদবি / রোল</label>
-              <input type="text" value={profile.role || ''} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" required />
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Internal Role / Designation</label>
+              <input type="text" value={profile.role} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" required />
             </div>
 
-            {/* ছবি আপলোড বাটন */}
             <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">প্রোফাইল পিকচার (অটো-কমপ্রেসড)</label>
-              <input 
-                type="file" 
-                ref={fileInputRef}
-                onChange={handleImageUploadAction} 
-                accept="image/*" 
-                className="hidden" 
-              />
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Avatar Media Upload</label>
+              <input type="file" ref={fileInputRef} onChange={handleImageUploadAction} accept="image/*" className="hidden" />
               <button
                 type="button"
                 disabled={imageUploading}
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-stone-900 border border-dashed border-stone-700 hover:border-[#c1121f] rounded-xl p-3 text-sm text-stone-400 hover:text-white transition flex items-center justify-center space-x-2 text-left focus:outline-none"
+                className="w-full bg-stone-50 border border-dashed border-stone-300 hover:border-[#800020] rounded-xl p-3 text-sm text-stone-500 hover:text-stone-900 transition flex items-center justify-center space-x-2 text-left focus:outline-none"
               >
                 {imageUploading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin text-[#c1121f]" />
-                    <span>ছবি প্রোসেস ও ছোট করা হচ্ছে...</span>
+                    <Loader2 className="h-4 w-4 animate-spin text-[#800020]" />
+                    <span>Processing buffer array...</span>
                   </>
                 ) : (
                   <>
-                    <Upload className="h-4 w-4 text-stone-500" />
-                    <span>{profile.image && profile.image !== '/logo.png' ? 'ছবি পরিবর্তন করুন' : 'ডিভাইস থেকে ছবি আপলোড'}</span>
+                    <Upload className="h-4 w-4 text-stone-400" />
+                    <span>Modify Avatar Image</span>
                   </>
                 )}
               </button>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">ক্যাটাগরি</label>
-              <select value={profile.category || 'CREATIVE'} onChange={e => setProfile({...profile, category: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]">
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Functional Category</label>
+              <select value={profile.category} onChange={e => setProfile({...profile, category: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition">
                 <option value="MANAGEMENT">MANAGEMENT</option>
                 <option value="EDITORIAL">EDITORIAL</option>
                 <option value="CREATIVE">CREATIVE</option>
@@ -309,42 +301,41 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* সিকিউরিটি সেকশন (পাসওয়ার্ড চেঞ্জ) */}
-          <div className="pt-4 border-t border-stone-900 space-y-4">
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Lock className="h-4 w-4 text-[#c1121f]" /> অ্যাকাউন্ট সিকিউরিটি
+          {/* PASSWORD SECURITY */}
+          <div className="pt-4 border-t border-stone-100 space-y-4">
+            <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-2">
+              <Lock className="h-4 w-4 text-[#800020]" /> Security Gate Overwrite
             </h4>
             <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">নতুন পাসওয়ার্ড সেট করুন</label>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Update Credentials Password</label>
               <input 
                 type="password" 
-                placeholder="নতুন পাসওয়ার্ড লিখুন" 
+                placeholder="Enter new private gate password" 
                 value={profile.password || ''} 
                 onChange={e => setProfile({...profile, password: e.target.value})} 
-                className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" 
+                className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" 
               />
             </div>
           </div>
 
-          {/* সোশ্যাল লিংকস */}
-          <div className="pt-4 border-t border-stone-900 space-y-4">
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider">যোগাযোগ ও সোশ্যাল লিংকস</h4>
-            
+          {/* SOCIAL INFRASTRUCTURE */}
+          <div className="pt-4 border-t border-stone-100 space-y-4">
+            <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider">Communication Matrix Nodes</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="email" placeholder="ইমেইল এড্রেস" value={profile.email || ''} onChange={e => setProfile({...profile, email: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" />
-              <input type="text" placeholder="গিটহাব লিংক" value={profile.github || ''} onChange={e => setProfile({...profile, github: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" />
-              <input type="text" placeholder="লিংকডইন লিংক" value={profile.linkedin || ''} onChange={e => setProfile({...profile, linkedin: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" />
-              <input type="text" placeholder="পার্সোনাল ওয়েবসাইট" value={profile.website || ''} onChange={e => setProfile({...profile, website: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" />
+              <input type="email" placeholder="Email Node Address" value={profile.email || ''} onChange={e => setProfile({...profile, email: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
+              <input type="text" placeholder="GitHub Identifier Link" value={profile.github || ''} onChange={e => setProfile({...profile, github: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
+              <input type="text" placeholder="LinkedIn Node Reference" value={profile.linkedin || ''} onChange={e => setProfile({...profile, linkedin: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
+              <input type="text" placeholder="Personal Web Endpoint Domain" value={profile.website || ''} onChange={e => setProfile({...profile, website: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
             </div>
           </div>
 
           <button 
             type="submit" 
             disabled={isSaving || imageUploading} 
-            className="w-full bg-[#c1121f] hover:bg-red-700 disabled:bg-stone-800 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-[#c1121f]/10"
+            className="w-full bg-[#800020] hover:bg-[#600018] disabled:bg-stone-400 text-white font-bold py-3.5 rounded-xl shadow-md transition duration-200 flex items-center justify-center space-x-2"
           >
             {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-            <span>প্রোফাইল ও ডেটা সেভ করুন</span>
+            <span>Commit Profile Database Matrix</span>
           </button>
         </form>
       </main>
