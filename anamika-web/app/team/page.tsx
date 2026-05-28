@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowLeft, Mail, Search, Sparkles, Globe, Loader2 } from 'lucide-react';
-import { db } from './lib/firebase'; // Ensure this matches your project structure
+import { db } from '../lib/firebase'; // Ensure this matches your project structure
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 
 type RoleCategory = 'ALL' | 'EDITORIAL' | 'CREATIVE' | 'TECH' | 'MANAGEMENT';
