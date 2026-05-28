@@ -17,7 +17,7 @@ interface UserProfile {
   linkedin?: string;
   website?: string;
   newsCardCount: number;
-  password?: string; // ফায়ারবেসে কাস্টম পাসওয়ার্ড সেভ রাখার জন্য
+  password?: string;
 }
 
 export default function ProfilePage() {
@@ -55,30 +55,28 @@ export default function ProfilePage() {
             category: "CREATIVE",
             image: "/logo.png",
             newsCardCount: 0,
+            email: "",
+            github: "",
+            linkedin: "",
+            website: "",
+            password: ""
           };
           await setDoc(docRef, defaultProfile);
           setProfile(defaultProfile);
         }
       } catch (error) {
         console.error("Firebase fetch error:", error);
-        setErrorMsg('ফায়ারবেস থেকে ডাটা লোড করতে সমস্যা হচ্ছে।');
+        setErrorMsg('ফায়ারবেস থেকে ডাটা লোড করতে সমস্যা হচ্ছে।');
       }
     };
 
     fetchProfileFromFirebase();
   }, []);
 
-  // ৩. ছবিকে Base64 টেক্সট স্ট্রিং বানিয়ে সরাসরি Firestore-এ সেভ করার লজিক (No Storage Required)
+  // ৩. ছবিকে রিসাইজ ও কমপ্রেস করে Base64 বানানোর লজিক (Max 400x400px, JPEG Compression)
   const handleImageUploadAction = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
-
-    // ১ মেগাবাইটের বেশি বড় ছবি হলে রিজেক্ট করবে (Firestore ডকুমেন্ট লিমিট ১ মেগাবাইট)
-    if (file.size > 1024 * 1024) {
-      setErrorMsg("ফ্রি প্ল্যানে প্রোফাইল ছবির সাইজ ১ মেগাবাইটের কম হতে হবে!");
-      setSuccessMsg('');
-      return;
-    }
 
     setImageUploading(true);
     setSuccessMsg('');
@@ -86,17 +84,58 @@ export default function ProfilePage() {
 
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => {
-      const base64String = reader.result as string;
+    reader.onload = (event) => {
+      const img = new window.Image();
+      img.src = event.target?.result as string;
       
-      // ছবিটিকে টেক্সট আকারে স্টেট-এ সেট করা
-      setProfile({ ...profile, image: base64String });
-      setSuccessMsg('ছবি প্রসেস হয়েছে! প্রোফাইলটি সম্পূর্ণ সেভ করুন।');
-      setImageUploading(false);
+      img.onload = () => {
+        // ক্যানভাস তৈরি করা রিসাইজিং এর জন্য
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // প্রোফাইল পিকচারের জন্য সর্বোচ্চ ৪০০x৪০০ পিক্সেল সাইজ যথেষ্ট
+        const MAX_SIZE = 400; 
+        
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // কোয়ালিটি ০.৭ (৭০%) দিয়ে JPEG ফরম্যাটে কম্প্রেসড Base64 জেনারেট করা (সাইজ অনেক কমে যাবে)
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+          
+          setProfile({ ...profile, image: compressedBase64 });
+          setSuccessMsg('ছবি সফলভাবে অপ্টিমাইজ ও প্রসেস করা হয়েছে! প্রোফাইলটি সম্পূর্ণ সেভ করুন।');
+        } else {
+          setErrorMsg('ছবি প্রসেস করতে টেকনিক্যাল সমস্যা হয়েছে।');
+        }
+        setImageUploading(false);
+      };
+
+      img.onerror = () => {
+        setErrorMsg('ইমেজ লোড করতে সমস্যা হয়েছে।');
+        setImageUploading(false);
+      };
     };
+    
     reader.onerror = (error) => {
       console.error("Error converting image:", error);
-      setErrorMsg('ছবি প্রসেস করতে সমস্যা হয়েছে।');
+      setErrorMsg('ফাইল রিড করতে সমস্যা হয়েছে।');
       setImageUploading(false);
     };
   };
@@ -110,12 +149,27 @@ export default function ProfilePage() {
     setErrorMsg('');
 
     try {
-      // Firestore-এ মেম্বার আইডি অনুযায়ী ডেটা রাইট করা
-      await setDoc(doc(db, "members", profile.id.toLowerCase()), profile, { merge: true });
-      setSuccessMsg('প্রোফাইল এবং সিকিউরিটি সেটিংস সফলভাবে ক্লাউডে আপডেট হয়েছে!');
-    } catch (error) {
-      console.error("Firebase write error:", error);
-      setErrorMsg('ডাটা সেভ করতে সমস্যা হয়েছে। Rules চেক করুন।');
+      // --- Undefined বা খালি ডাটা ফিল্টারিং সেইফগার্ড ---
+      const cleanProfile: Record<string, any> = {
+        id: profile.id.toLowerCase(),
+        name: profile.name || "",
+        role: profile.role || "Creative Designer",
+        category: profile.category || "CREATIVE",
+        image: profile.image || "/logo.png",
+        newsCardCount: profile.newsCardCount || 0,
+        email: profile.email || "",
+        github: profile.github || "",
+        linkedin: profile.linkedin || "",
+        website: profile.website || "",
+        password: profile.password || ""
+      };
+
+      // Firestore-এ মেম্বার আইডি অনুযায়ী ডেটা রাইট করা
+      await setDoc(doc(db, "members", cleanProfile.id), cleanProfile, { merge: true });
+      setSuccessMsg('প্রোফাইল এবং সিকিউরিটি সেটিংস সফলভাবে ক্লাউডে আপডেট হয়েছে!');
+    } catch (error: any) {
+      console.error("Firebase write error detailed:", error);
+      setErrorMsg(`ডাটা সেভ করা যায়নি। ফায়ারবেস রেসপন্স: ${error.message || 'ডকুমেন্ট সাইজ বা রুলস জটিলতা।'}`);
     } finally {
       setIsSaving(false);
     }
@@ -182,17 +236,17 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">পুরো নাম</label>
-              <input type="text" value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" required />
+              <input type="text" value={profile.name || ''} onChange={e => setProfile({...profile, name: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" required />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">পদবি / রোল</label>
-              <input type="text" value={profile.role} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" required />
+              <input type="text" value={profile.role || ''} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" required />
             </div>
 
-            {/* ছবি আপলোড বাটন */}
+            {/* ছবি আপলোড বাটন (যেকোনো সাইজ অটো হ্যান্ডেল হবে) */}
             <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">প্রোফাইল পিকচার (সর্বোচ্চ 1MB)</label>
+              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">প্রোফাইল পিকচার (অটো-কমপ্রেসড)</label>
               <input 
                 type="file" 
                 ref={fileInputRef}
@@ -209,7 +263,7 @@ export default function ProfilePage() {
                 {imageUploading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin text-[#c1121f]" />
-                    <span>ছবি প্রোসেস হচ্ছে...</span>
+                    <span>ছবি প্রোসেস ও ছোট করা হচ্ছে...</span>
                   </>
                 ) : (
                   <>
@@ -222,7 +276,7 @@ export default function ProfilePage() {
 
             <div>
               <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">ক্যাটাগরি</label>
-              <select value={profile.category} onChange={e => setProfile({...profile, category: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]">
+              <select value={profile.category || 'CREATIVE'} onChange={e => setProfile({...profile, category: e.target.value})} className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]">
                 <option value="MANAGEMENT">MANAGEMENT</option>
                 <option value="EDITORIAL">EDITORIAL</option>
                 <option value="CREATIVE">CREATIVE</option>
@@ -231,16 +285,16 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* সিকিউরিটি সেকশন (পাসওয়ার্ড চেঞ্জ) */}
+          {/* সিকিউরিটি সেকশন (পাসওয়ার্ড চেঞ্জ) */}
           <div className="pt-4 border-t border-stone-900 space-y-4">
             <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Lock className="h-4 w-4 text-[#c1121f]" /> অ্যাকাউন্ট সিকিউরিটি
             </h4>
             <div>
-              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">নতুন পাসওয়ার্ড সেট করুন</label>
+              <label className="block text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">নতুন পাসওয়ার্ড সেট করুন</label>
               <input 
                 type="password" 
-                placeholder="নতুন পাসওয়ার্ড লিখুন (ফাঁকা রাখলে আগের ডিফল্ট পাসওয়ার্ড কাজ করবে)" 
+                placeholder="নতুন পাসওয়ার্ড লিখুন" 
                 value={profile.password || ''} 
                 onChange={e => setProfile({...profile, password: e.target.value})} 
                 className="w-full bg-stone-900 border border-stone-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#c1121f]" 
@@ -266,7 +320,7 @@ export default function ProfilePage() {
             className="w-full bg-[#c1121f] hover:bg-red-700 disabled:bg-stone-800 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center space-x-2 shadow-lg shadow-[#c1121f]/10"
           >
             {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-            <span>প্রোফাইল ও ডেটা সেভ করুন</span>
+            <span>Proflie & Data Save Krun</span>
           </button>
         </form>
       </main>
