@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link'; // রিয়্যাক্ট মডিউল থেকে নয়, নেক্সট লিংক থেকে ইম্পোর্ট ফিক্স করা হয়েছে
+import Link from 'next/link';
 import Image from 'next/image';
-import { db } from '../lib/firebase'; // আপনার প্রোজেক্ট স্ট্রাকচার অনুযায়ী সঠিক আপেক্ষিক পাথ
+import { db } from '../lib/firebase'; // Ensure this matches your project directory structure
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { ArrowLeft, Save, Sparkles, Loader2, Upload, Lock } from 'lucide-react';
 
-// ড্যাশবোর্ডের সাথে মিল রেখে ইন্টারফেস স্ট্রাকচার
 interface UserProfile {
   id: string;
   name: string;
@@ -32,7 +31,7 @@ export default function ProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // ড্যাশবোর্ডের মতো হুবহু একই উপায়ে লোকাল সেশন থেকে ID ও Name রিড করা হচ্ছে
+    // Reading user authentication metadata from the local storage session payload
     const session = localStorage.getItem('tk_user_session');
     if (!session) {
       window.location.href = '/'; 
@@ -41,16 +40,15 @@ export default function ProfilePage() {
     
     const currentSession = JSON.parse(session);
     if (!currentSession || !currentSession.id) {
-      setErrorMsg('Session configuration missing or corrupted.');
+      setErrorMsg('Session configuration is missing or corrupted.');
       setIsAuthenticated(false);
       return;
     }
 
     setIsAuthenticated(true);
-    // আইডি লোয়ারকেস ও ট্রিম করে নিখুঁত পাথ জেনারেট করা (e.g., relax_bro)
     const cleanedUserId = String(currentSession.id).trim().toLowerCase();
 
-    // Firebase Firestore থেকে মেম্বার ডেটা ফেচ করা
+    // Fetching user profile document instance from Firebase Firestore
     const fetchProfileFromFirebase = async () => {
       try {
         const memberDocRef = doc(db, 'members', cleanedUserId);
@@ -72,7 +70,7 @@ export default function ProfilePage() {
             password: userData.password || ''
           });
         } else {
-          // ক্লাউডে ডাটা না থাকলে ড্যাশবোর্ড সেশন অনুযায়ী ফ্রেশ স্ট্রাকচার জেনারেট হবে
+          // Fallback provisioning scheme to construct records if cloud documents do not exist
           const defaultProfile: UserProfile = {
             id: cleanedUserId,
             name: currentSession.name || "New Member",
@@ -90,15 +88,15 @@ export default function ProfilePage() {
           setProfile(defaultProfile);
         }
       } catch (error) {
-        console.error("Firebase live fetch error:", error);
-        setErrorMsg('System error connecting to Firestore infrastructure.');
+        console.error("Firebase live data acquisition failure:", error);
+        setErrorMsg('System error encountered while connecting to Firestore infrastructure.');
       }
     };
 
     fetchProfileFromFirebase();
   }, []);
 
-  // ইমেজ অটো-কম্প্রেস ও লাইটওয়েট Base64 জেনারেশন লজিক
+  // Client-side visual optimization engine generating lean Base64 image strings
   const handleImageUploadAction = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
@@ -138,21 +136,21 @@ export default function ProfilePage() {
           ctx.drawImage(img, 0, 0, width, height);
           const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
           setProfile({ ...profile, image: compressedBase64 });
-          setSuccessMsg('Image optimized successfully! Remember to save profile updates.');
+          setSuccessMsg('Profile image optimized successfully. Please commit changes to save permanently.');
         } else {
-          setErrorMsg('Error rendering canvas engine.');
+          setErrorMsg('Failed to initialize canvas rendering architecture.');
         }
         setImageUploading(false);
       };
     };
   };
 
-  // সাবমিট করার সময় ফায়ারবেস ডেটা সিঙ্ক করা
+  // Synchronizing local mutations directly back into cloud document state
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!profile || !profile.id) {
-      setErrorMsg('Authentication identity missing.');
+      setErrorMsg('Authentication identity state missing.');
       return;
     }
     
@@ -162,7 +160,6 @@ export default function ProfilePage() {
 
     try {
       const cleanedId = String(profile.id).trim().toLowerCase();
-      
       const memberDocRef = doc(db, 'members', cleanedId);
       const memberDocSnap = await getDoc(memberDocRef);
 
@@ -186,10 +183,10 @@ export default function ProfilePage() {
         await setDoc(memberDocRef, cleanProfile);
       }
       
-      setSuccessMsg('Profile and access credentials successfully synchronized on cloud!');
+      setSuccessMsg('Profile information and cloud access credentials successfully synchronized.');
     } catch (error: any) {
-      console.error("Firestore submission error:", error);
-      setErrorMsg('Failed to overwrite document parameters.');
+      console.error("Firestore database update exception:", error);
+      setErrorMsg('Critical failure writing to cloud schema parameters.');
     } finally {
       setIsSaving(false);
     }
@@ -206,23 +203,24 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-stone-50 font-sans text-stone-800 pb-16">
-      {/* NAVBAR */}
+      
+      {/* GLOBAL MANAGEMENT NAVBAR */}
       <nav className="bg-[#800020] text-white shadow-lg sticky top-0 z-50 px-4 py-4 border-b border-stone-700">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link href="/" className="p-2 bg-stone-900/40 hover:bg-stone-900 rounded-xl transition text-stone-200 border border-stone-700/50">
+            <Link href="/dashboard" className="p-2 bg-stone-900/40 hover:bg-stone-900 rounded-xl transition text-stone-200 border border-stone-700/50">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
               <h1 className="text-lg font-bold text-white flex items-center gap-2 tracking-wide">
-                <Sparkles className="h-5 w-5 text-amber-400" /> Profile Configurations
+                <Sparkles className="h-5 w-5 text-amber-400" /> Account Settings
               </h1>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* MAIN CONTENT */}
+      {/* CORE CONTROL PROFILE FORM */}
       <main className="max-w-3xl mx-auto px-4 mt-10">
         <form onSubmit={handleProfileSave} className="bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 space-y-6 shadow-xl">
           
@@ -238,13 +236,13 @@ export default function ProfilePage() {
             </div>
           )}
 
-          {/* AVATAR & ANALYTICS HEADER */}
+          {/* AVATAR IDENTITY & QUANTUM ANALYTICS PANEL */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-stone-100">
             <div className="flex items-center space-x-4">
               <div className="relative w-16 h-16 rounded-full overflow-hidden border border-stone-300 bg-stone-100 shadow-inner">
                 <Image 
                   src={profile.image || "/logo.png"} 
-                  alt="Profile Avatar" 
+                  alt="User Avatar" 
                   fill
                   sizes="64px"
                   className="object-cover"
@@ -253,17 +251,17 @@ export default function ProfilePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-stone-900">{profile.name}</h3>
-                <p className="text-xs text-stone-400 font-mono">System Identity Document: {profile.id}</p>
+                <p className="text-xs text-stone-400 font-mono">System ID Node: {profile.id}</p>
               </div>
             </div>
             
             <div className="bg-stone-50 border border-stone-200 px-5 py-3 rounded-xl text-center sm:text-right shadow-sm">
               <p className="text-[10px] uppercase tracking-widest text-stone-500 font-bold">News Cards Generated</p>
-              <p className="text-2xl font-black text-[#800020] mt-0.5">{profile.newsCardCount} units</p>
+              <p className="text-2xl font-black text-[#800020] mt-0.5">{profile.newsCardCount} Units</p>
             </div>
           </div>
 
-          {/* CONTENT INPUTS */}
+          {/* CONTENT PARAMETERS MATRIX */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Display Name</label>
@@ -271,7 +269,7 @@ export default function ProfilePage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Internal Role / Designation</label>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Professional Designation / Role</label>
               <input type="text" value={profile.role} onChange={e => setProfile({...profile, role: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" required />
             </div>
 
@@ -287,19 +285,19 @@ export default function ProfilePage() {
                 {imageUploading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin text-[#800020]" />
-                    <span>Processing buffer array...</span>
+                    <span>Processing visual buffer...</span>
                   </>
                 ) : (
                   <>
                     <Upload className="h-4 w-4 text-stone-400" />
-                    <span>Modify Avatar Image</span>
+                    <span>Upload New Image Asset</span>
                   </>
                 )}
               </button>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Functional Category</label>
+              <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Functional Segment Category</label>
               <select value={profile.category} onChange={e => setProfile({...profile, category: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition">
                 <option value="MANAGEMENT">MANAGEMENT</option>
                 <option value="EDITORIAL">EDITORIAL</option>
@@ -309,16 +307,16 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* PASSWORD SECURITY */}
+          {/* PRIVACY & SYSTEM CREDENTIAL SECURITY SECURITY */}
           <div className="pt-4 border-t border-stone-100 space-y-4">
             <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-2">
-              <Lock className="h-4 w-4 text-[#800020]" /> Security Gate Overwrite
+              <Lock className="h-4 w-4 text-[#800020]" /> Security Gate Infrastructure
             </h4>
             <div>
               <label className="block text-xs font-semibold text-stone-600 uppercase tracking-wider mb-2">Update Credentials Password</label>
               <input 
                 type="password" 
-                placeholder="Enter new private gate password" 
+                placeholder="Assign secure system interface password" 
                 value={profile.password || ''} 
                 onChange={e => setProfile({...profile, password: e.target.value})} 
                 className="w-full bg-[#faf9f6] border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" 
@@ -326,24 +324,25 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* SOCIAL INFRASTRUCTURE */}
+          {/* NETWORKING MATRIX NODES */}
           <div className="pt-4 border-t border-stone-100 space-y-4">
-            <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider">Communication Matrix Nodes</h4>
+            <h4 className="text-xs font-bold text-stone-700 uppercase tracking-wider">Communication Grid Nodes</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input type="email" placeholder="Email Node Address" value={profile.email || ''} onChange={e => setProfile({...profile, email: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
-              <input type="text" placeholder="GitHub Identifier Link" value={profile.github || ''} onChange={e => setProfile({...profile, github: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
-              <input type="text" placeholder="LinkedIn Node Reference" value={profile.linkedin || ''} onChange={e => setProfile({...profile, linkedin: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
-              <input type="text" placeholder="Personal Web Endpoint Domain" value={profile.website || ''} onChange={e => setProfile({...profile, website: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
+              <input type="email" placeholder="Corporate Email Address" value={profile.email || ''} onChange={e => setProfile({...profile, email: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
+              <input type="text" placeholder="GitHub Repository Endpoint" value={profile.github || ''} onChange={e => setProfile({...profile, github: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
+              <input type="text" placeholder="LinkedIn Professional Node" value={profile.linkedin || ''} onChange={e => setProfile({...profile, linkedin: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
+              <input type="text" placeholder="External Portfolio URL" value={profile.website || ''} onChange={e => setProfile({...profile, website: e.target.value})} className="w-full bg-stone-50 border border-stone-200 rounded-xl p-3 text-sm text-black focus:outline-none focus:border-[#800020] focus:bg-white transition" />
             </div>
           </div>
 
+          {/* COMMIT EXECUTION ACTION */}
           <button 
             type="submit" 
             disabled={isSaving || imageUploading} 
             className="w-full bg-[#800020] hover:bg-[#600018] disabled:bg-stone-400 text-white font-bold py-3.5 rounded-xl shadow-md transition duration-200 flex items-center justify-center space-x-2"
           >
             {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-            <span>Commit Profile Database Matrix</span>
+            <span>Commit System Configurations</span>
           </button>
         </form>
       </main>
