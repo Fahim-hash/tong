@@ -424,4 +424,31 @@ export default function AdminDashboard() {
                         <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-stone-900 border border-stone-800 tracking-wider text-stone-500 rounded">
                           {member.category}
                         </span>
-                   
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 bg-red-950/20 border border-red-900/30 tracking-wider text-red-400 rounded">
+                          Score: {member.newsCardCount}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 border-t sm:border-t-0 border-stone-900 pt-3 sm:pt-0 justify-end">
+                    <button onClick={() => initiateEditSequence(member)} className="p-2 bg-stone-900 hover:bg-stone-800 border border-stone-800 text-stone-300 rounded-xl transition flex items-center gap-1 text-[11px] font-bold">
+                      <Edit2 className="h-3 w-3" /> <span className="hidden sm:inline">Modify</span>
+                    </button>
+                    <button onClick={() => purgeDocumentNode(member.id)} className="p-2 bg-red-950/20 hover:bg-red-950/50 border border-red-900/30 text-red-400 rounded-xl transition flex items-center gap-1 text-[11px] font-bold">
+                      <Trash2 className="h-3 w-3" /> <span className="hidden sm:inline">Purge</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12 bg-stone-950 border border-stone-800 rounded-2xl">
+                <p className="text-stone-500 text-xs font-sans">No matching parameters found inside system tracking scope.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
