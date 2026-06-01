@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { db } from '../lib/firebase'; 
-import { doc, updateDoc, increment } from 'firebase/firestore'; 
+import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore'; 
 import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy, Check, Type, Italic } from 'lucide-react';
 
 type Category = 'NATIONAL' | 'INTERNATIONAL' | 'SPORTS' | 'POLITICS' | 'ECONOMY' | 'SOCIAL';
@@ -140,8 +140,8 @@ export default function NewsCardGenerator() {
     });
   };
 
-  // --- FIREBASE TRACKING FUNCTION ---
-  const trackFirebaseNewsCount = async () => {
+  // --- FIREBASE TRACKING & SAVE FUNCTION ---
+  const trackFirebaseNewsData = async () => {
     try {
       const session = localStorage.getItem('tk_user_session');
       if (!session) {
@@ -150,7 +150,6 @@ export default function NewsCardGenerator() {
       }
       
       const currentSession = JSON.parse(session);
-      // নিশ্চিত হোন আপনার সেশন অবজেক্টে আইডি প্রোপার্টিটি 'id' নাকি 'uid' বা অন্য কিছু।
       const userId = (currentSession.id || currentSession.uid || "").toLowerCase().trim();
 
       if (!userId) {
@@ -161,13 +160,25 @@ export default function NewsCardGenerator() {
       // Firestore এ members কালেকশনের নির্দিষ্ট ইউজারের ডকুমেন্ট রেফারেন্স
       const memberDocRef = doc(db, "members", userId);
       
-      // ডাউনলোড কাউন্ট ১ বৃদ্ধি করা
+      // ১. ডাউনলোড কাউন্ট ১ বৃদ্ধি করা
       await updateDoc(memberDocRef, {
         newsCardCount: increment(1)
       });
-      console.log(`Successfully updated download count for user: ${userId}`);
+
+      // ২. ক্যাপশন এবং কার্ডের ডেটা আলাদা সাব-কালেকশনে সেভ করা
+      const historyCollectionRef = collection(memberDocRef, "generatedCards");
+      await addDoc(historyCollectionRef, {
+        headline: headline,
+        subHeadline: subHeadline,
+        caption: generatedCaption || null, // জেনারেট না হয়ে থাকলে null থাকবে
+        category: category,
+        variant: selectedVariant,
+        createdAt: serverTimestamp()
+      });
+
+      console.log(`Successfully updated count and saved caption data for user: ${userId}`);
     } catch (err) {
-      console.error("Failed to track news count on Firebase:", err);
+      console.error("Failed to track news count and caption on Firebase:", err);
     }
   };
 
@@ -285,7 +296,7 @@ export default function NewsCardGenerator() {
       ctx.fillText(currentSubLine, margin, nextTextY);
     }
 
-    // ডাউনলোড ফাইল ও ফায়ারবেস আপডেট সিঙ্ক করার ফাইনাল ফাংশন
+    // ডাউনলোড ফাইল ও ফায়ারবেস আপডেট সিঙ্ক করার ফাইনাল ফাংশন
     const finishCanvasDrawing = async () => {
       // ফটো ক্রেডিট
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
@@ -293,20 +304,20 @@ export default function NewsCardGenerator() {
       ctx.textAlign = 'left';
       ctx.fillText(photoCredit, margin, H - 65);
 
-      // ব্র্যান্ড ওয়াটারমার্ক
+      // ব্র্যান্ড ওয়াটারমার্ক
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.font = '700 28px Arial, sans-serif';
       ctx.textAlign = 'right';
       ctx.fillText('tongerkhobor', W - margin, H - 65);
 
       try {
-        // ১. ট্র্যাকিং ফাংশন কল (Firebase এ কাউন্ট যোগ হবে)
-        await trackFirebaseNewsCount();
+        // ট্র্যাকিং ও ক্যাপশন সেভ ফাংশন কল
+        await trackFirebaseNewsData();
       } catch (fError) {
         console.error("Firebase counting error triggered:", fError);
       }
 
-      // ২. ইমেজ ফাইল ডাউনলোড ট্রিগার করা
+      // ইমেজ ফাইল ডাউনলোড ট্রিগার করা
       const dataUrl = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
       link.download = `TongerKhobor-${Date.now()}.png`;
@@ -505,7 +516,7 @@ export default function NewsCardGenerator() {
             </span>
 
             <div className="w-[360px] h-[450px] relative border border-stone-300 rounded-2xl shadow-2xl overflow-hidden bg-stone-900">
-              <div 
+              <div  
                 className="w-[1080px] h-[1350px] absolute top-0 left-0 origin-top-left flex flex-col"
                 style={{ transform: 'scale(0.333333)' }}
               >
