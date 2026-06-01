@@ -83,7 +83,7 @@ export default function AdminDashboard() {
           return;
         }
 
-        // STEP 2: Cloud Verification (Cross-checking current session parameters directly against cloud records)
+        // STEP 2: Cloud Verification
         const userDocRef = doc(db, 'members', cleanedId);
         const userDocSnap = await getDoc(userDocRef);
 
@@ -95,16 +95,43 @@ export default function AdminDashboard() {
 
         const secureData = userDocSnap.data();
         
-        // Ensure their cloud role profile is strictly defined as MANAGEMENT
         if (secureData.category !== 'MANAGEMENT') {
           setIsAuthenticated(false);
           setIsLoading(false);
           return;
         }
 
-        // Integrity verified completely
         setIsAuthenticated(true);
-        initializeDataStream();
+        
+        // Start live snapshot stream
+        const membersQuery = query(collection(db, 'members'), orderBy('name', 'asc'));
+        const unsubscribe = onSnapshot(membersQuery, (snapshot) => {
+          const memberList: TeamMember[] = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            memberList.push({
+              id: doc.id,
+              name: data.name || '',
+              role: data.role || '',
+              category: data.category || 'CREATIVE',
+              image: data.image || '/logo.png',
+              email: data.email || '',
+              github: data.github || '',
+              linkedin: data.linkedin || '',
+              website: data.website || '',
+              newsCardCount: Number(data.newsCardCount) || 0,
+              password: data.password || ''
+            });
+          });
+          setMembers(memberList);
+          setIsLoading(false);
+        }, (error) => {
+          console.error("Real-time snapshot sync error:", error);
+          setErrorMsg("Telemetry interface synchronization failure.");
+          setIsLoading(false);
+        });
+
+        return () => unsubscribe();
 
       } catch (error) {
         console.error("Authorization subsystem validation exception:", error);
@@ -115,38 +142,6 @@ export default function AdminDashboard() {
 
     verifyAdministrativeClearance();
   }, []);
-
-  // --- REAL-TIME DATA ARCHITECTURE SUBSCRIPTION ---
-  const initializeDataStream = () => {
-    const membersQuery = query(collection(db, 'members'), orderBy('name', 'asc'));
-    const unsubscribe = onSnapshot(membersQuery, (snapshot) => {
-      const memberList: TeamMember[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        memberList.push({
-          id: doc.id,
-          name: data.name || '',
-          role: data.role || '',
-          category: data.category || 'CREATIVE',
-          image: data.image || '/logo.png',
-          email: data.email || '',
-          github: data.github || '',
-          linkedin: data.linkedin || '',
-          website: data.website || '',
-          newsCardCount: Number(data.newsCardCount) || 0,
-          password: data.password || ''
-        });
-      });
-      setMembers(memberList);
-      setIsLoading(false);
-    }, (error) => {
-      console.error("Real-time snapshot synchronization error:", error);
-      setErrorMsg("Telemetry interface synchronization failure.");
-      setIsLoading(false);
-    });
-
-    return () => unsubscribe();
-  };
 
   // --- FORM HANDLING MUTATIONS ---
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -426,4 +421,7 @@ export default function AdminDashboard() {
                       </div>
                       <p className="text-xs text-stone-400 mt-0.5">{member.role}</p>
                       <div className="flex gap-2 mt-1.5">
-                        <span className="text-[9px] font-black uppercase px-1.5
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-stone-900 border border-stone-800 tracking-wider text-stone-500 rounded">
+                          {member.category}
+                        </span>
+                   
