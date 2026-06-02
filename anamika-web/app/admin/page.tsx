@@ -8,7 +8,7 @@ import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy, getDoc 
 import { 
   ArrowLeft, ShieldAlert, Users, UserPlus, Edit2, Trash2, 
   Save, X, Loader2, Search, CheckCircle, AlertTriangle, ShieldCheck,
-  Plus, MessageSquare, History
+  Plus, MessageSquare, History, FileText, Award
 } from 'lucide-react';
 
 interface TeamMember {
@@ -274,6 +274,16 @@ export default function AdminDashboard() {
     member.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // সব মেম্বারদের জেনারেট করা ক্যাপশন এক জায়গায় জড়ো করার লজিক (Global List Engine)
+  const globalCaptions = members.flatMap(member => 
+    member.captionHistory.map(caption => ({
+      authorId: member.id,
+      authorName: member.name,
+      authorImage: member.image,
+      captionText: caption
+    }))
+  );
+
   if (isAuthenticated === false) {
     return (
       <div className="min-h-screen bg-[#07090e] flex flex-col items-center justify-center p-6 text-center">
@@ -489,6 +499,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {/* ACTIVE MEMBERS SECTION */}
           <div className="space-y-3">
             {filteredMembers.length > 0 ? (
               filteredMembers.map((member) => (
@@ -528,31 +539,54 @@ export default function AdminDashboard() {
                       </button>
                     </div>
                   </div>
-
-                  {/* Display Section for Registered Caption History */}
-                  {member.captionHistory && member.captionHistory.length > 0 && (
-                    <div className="mt-1 p-3 bg-stone-900/30 border border-stone-900 rounded-xl">
-                      <p className="text-[10px] font-mono font-bold tracking-wider uppercase text-stone-500 flex items-center gap-1 mb-2">
-                        <History className="h-3 w-3" /> Historical Caption Streams ({member.captionHistory.length})
-                      </p>
-                      <div className="flex flex-col gap-1.5 max-h-24 overflow-y-auto pr-1">
-                        {member.captionHistory.map((caption, idx) => (
-                          <div key={idx} className="bg-stone-950/60 p-2 border border-stone-900 rounded-md text-[11px] text-stone-400 leading-normal">
-                            • {caption}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 bg-stone-950 border border-stone-800 rounded-2xl">
+              <div className="text-center py-8 bg-stone-950 border border-stone-800 rounded-2xl">
                 <p className="text-stone-500 text-xs font-sans">No matching parameters found inside system tracking scope.</p>
               </div>
             )}
           </div>
+
+          {/* New Dynamic Segment: GLOBLAL NEWS CARD STREAM LIST */}
+          <div className="bg-stone-950 border border-stone-800 rounded-2xl p-5 shadow-xl">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-900 mb-4">
+              <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
+                <FileText className="h-4 w-4 text-[#c1121f]" /> Global News Card Streams (All Logs)
+              </h3>
+              <span className="text-[10px] font-mono bg-stone-900 text-stone-400 px-2 py-0.5 border border-stone-800 rounded font-bold">
+                Total Logs: {globalCaptions.length}
+              </span>
+            </div>
+
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+              {globalCaptions.length > 0 ? (
+                globalCaptions.map((card, idx) => (
+                  <div key={idx} className="bg-stone-900/40 border border-stone-800/80 rounded-xl p-3.5 flex items-start gap-3 hover:border-stone-700 transition">
+                    <div className="relative w-8 h-8 rounded-full overflow-hidden border border-stone-800 bg-stone-950 flex-shrink-0">
+                      <Image src={card.authorImage} alt={card.authorName} fill className="object-cover" unoptimized />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs font-bold text-stone-200">{card.authorName}</span>
+                        <span className="text-[9px] font-mono bg-stone-950 text-stone-500 px-1.5 py-0.2 rounded border border-stone-900">
+                          @{card.authorId}
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-400 leading-relaxed font-sans bg-stone-950/50 border border-stone-900/60 p-2.5 rounded-lg whitespace-pre-wrap break-words">
+                        {card.captionText}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-stone-600 italic text-xs">No active news card history streams found in the database.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </main>
     </div>
