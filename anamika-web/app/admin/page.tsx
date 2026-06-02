@@ -23,7 +23,7 @@ interface TeamMember {
   website: string;
   newsCardCount: number;
   password?: string;
-  captionHistory: string[]; // Added Caption History Array Array
+  captionHistory: string[];
 }
 
 const AUTHORIZED_ADMIN_IDS = ['relax_bro', 'fahim_muddasir', 'admin_main'];
@@ -43,7 +43,7 @@ export default function AdminDashboard() {
   const [isSaving, setIsSaving] = useState(false);
   const [currentIdIsLocked, setCurrentIdIsLocked] = useState(false);
 
-  // Local State for Adding a New Caption to the list
+  // Local State for Adding a New Caption
   const [newCaptionInput, setNewCaptionInput] = useState('');
 
   const [formData, setFormData] = useState<Partial<TeamMember>>({
@@ -63,6 +63,8 @@ export default function AdminDashboard() {
 
   // --- CRYPTOGRAPHIC & SESSION AUTHORIZATION GUARD ---
   useEffect(() => {
+    let unsubscribe: () => void = () => {};
+
     const verifyAdministrativeClearance = async () => {
       const session = localStorage.getItem('tk_user_session');
       if (!session) {
@@ -112,7 +114,7 @@ export default function AdminDashboard() {
         
         // Start live snapshot stream
         const membersQuery = query(collection(db, 'members'), orderBy('name', 'asc'));
-        const unsubscribe = onSnapshot(membersQuery, (snapshot) => {
+        unsubscribe = onSnapshot(membersQuery, (snapshot) => {
           const memberList: TeamMember[] = [];
           snapshot.forEach((doc) => {
             const data = doc.data();
@@ -139,8 +141,6 @@ export default function AdminDashboard() {
           setIsLoading(false);
         });
 
-        return () => unsubscribe();
-
       } catch (error) {
         console.error("Authorization subsystem validation exception:", error);
         setIsAuthenticated(false);
@@ -149,6 +149,10 @@ export default function AdminDashboard() {
     };
 
     verifyAdministrativeClearance();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // --- FORM HANDLING MUTATIONS ---
@@ -214,6 +218,7 @@ export default function AdminDashboard() {
       setSuccessMsg(`Document transactional state safely saved for node: "${sanitizedId}"`);
       resetFormState();
     } catch (error) {
+      console.error(error);
       setErrorMsg("Database operation rejected by network firewall configuration rules.");
     } finally {
       setIsSaving(false);
@@ -239,6 +244,7 @@ export default function AdminDashboard() {
       await deleteDoc(doc(db, 'members', id));
       setSuccessMsg(`Document cluster context "${id}" wiped from global databases successfully.`);
     } catch (error) {
+      console.error(error);
       setErrorMsg("Destructive transaction sequence rejected at structural layer.");
     }
   };
