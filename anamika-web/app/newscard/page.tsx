@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import Link from 'next/link';
 import { db } from '../lib/firebase'; 
 import { doc, updateDoc, increment, collection, addDoc, serverTimestamp } from 'firebase/firestore'; 
-import { ArrowLeft, Download, RefreshCw, Eye, Image as ImageIcon, Sparkles, Copy, Check, Type, Italic } from 'lucide-react';
+import { ArrowLeft, Download, RefreshCw, Sparkles, Copy, Check } from 'lucide-react';
 
 type Category = 'NATIONAL' | 'INTERNATIONAL' | 'SPORTS' | 'POLITICS' | 'ECONOMY' | 'SOCIAL';
 type Variant = 'white' | 'black';
@@ -157,28 +157,30 @@ export default function NewsCardGenerator() {
         return;
       }
 
-      // Firestore এ members কালেকশনের নির্দিষ্ট ইউজারের ডকুমেন্ট রেফারেন্স
+      // ১. নির্দিষ্ট মেম্বারের ডকুমেন্ট রেফারেন্স তৈরি
       const memberDocRef = doc(db, "members", userId);
       
-      // ১. ডাউনলোড কাউন্ট ১ বৃদ্ধি করা
+      // ২. ইউজারের নিউজ কার্ড তৈরির টোটাল কাউন্ট ১ বাড়িয়ে দেওয়া
       await updateDoc(memberDocRef, {
         newsCardCount: increment(1)
       });
 
-      // ২. ক্যাপশন এবং কার্ডের ডেটা আলাদা সাব-কালেকশনে সেভ করা
+      // ৩. 'generatedCards' সাব-কালেকশনে সম্পূর্ণ হিস্টোরি অবজেক্ট পুশ করা
       const historyCollectionRef = collection(memberDocRef, "generatedCards");
       await addDoc(historyCollectionRef, {
         headline: headline,
         subHeadline: subHeadline,
-        caption: generatedCaption || null, // জেনারেট না হয়ে থাকলে null থাকবে
+        caption: generatedCaption || null,
         category: category,
         variant: selectedVariant,
+        langMode: langMode,
+        photoCredit: photoCredit,
         createdAt: serverTimestamp()
       });
 
-      console.log(`Successfully updated count and saved caption data for user: ${userId}`);
+      console.log(`Successfully updated count and saved card details for user: ${userId}`);
     } catch (err) {
-      console.error("Failed to track news count and caption on Firebase:", err);
+      console.error("Failed to track news count and info on Firebase:", err);
     }
   };
 
@@ -209,12 +211,12 @@ export default function NewsCardGenerator() {
 
     const margin = 70;
     
-    // ডেট
+    // ডেট রেন্ডার
     ctx.fillStyle = selectedVariant === 'white' ? '#555555' : '#bbbbbb';
     ctx.font = '700 30px Arial, SolaimanLipi, sans-serif';
     ctx.fillText(getDynamicDate(), margin, 75);
 
-    // মেইন হেডলাইন জেনারেটর
+    // মেইন হেডলাইন জেনারেটর ইঞ্জিন
     const hSize = 54;
     const maxLineWidth = W - (margin * 2);
     let nextTextY = 155;
@@ -296,28 +298,28 @@ export default function NewsCardGenerator() {
       ctx.fillText(currentSubLine, margin, nextTextY);
     }
 
-    // ডাউনলোড ফাইল ও ফায়ারবেস আপডেট সিঙ্ক করার ফাইনাল ফাংশন
+    // ডাউনলোড ফাইল ও ফায়ারবেস ট্র্যাকিং সিঙ্ক করার মেইন লজিক
     const finishCanvasDrawing = async () => {
-      // ফটো ক্রেডিট
+      // ফটো ক্রেডিট টেক্সট
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.font = '500 24px Arial, SolaimanLipi, sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText(photoCredit, margin, H - 65);
 
-      // ব্র্যান্ড ওয়াটারমার্ক
+      // ব্র্যান্ড লোগো বা ওয়াটারমার্ক
       ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
       ctx.font = '700 28px Arial, sans-serif';
       ctx.textAlign = 'right';
       ctx.fillText('tongerkhobor', W - margin, H - 65);
 
       try {
-        // ট্র্যাকিং ও ক্যাপশন সেভ ফাংশন কল
+        // ডেটাবেজ পুশ রান করা হলো
         await trackFirebaseNewsData();
       } catch (fError) {
-        console.error("Firebase counting error triggered:", fError);
+        console.error("Firebase database runtime tracking error:", fError);
       }
 
-      // ইমেজ ফাইল ডাউনলোড ট্রিগার করা
+      // ক্লায়েন্ট ফাইল ডাউনলোড ইনিশিয়েট
       const dataUrl = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
       link.download = `TongerKhobor-${Date.now()}.png`;
