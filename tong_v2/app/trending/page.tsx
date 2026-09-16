@@ -1,0 +1,2 @@
+import Link from 'next/link';import {articles} from '../lib/data';
+export default function Trending(){return <div className="wrap"><h1 className="sectiontitle">ট্রেন্ডিং</h1><div className="grid">{articles.slice().reverse().map((a,i)=><Link className="card" href={`/articles/${a.slug}`} key={a.id}><span className="tag">#{i+1} • {a.category}</span><h3>{a.title}</h3><p>{a.subtitle}</p></Link>)}</div></div>}

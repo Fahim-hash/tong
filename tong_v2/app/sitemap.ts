@@ -1,0 +1,1 @@
+import type {MetadataRoute} from 'next';export default function sitemap():MetadataRoute.Sitemap{const base=process.env.NEXT_PUBLIC_SITE_URL||'https://tong-one.vercel.app';return [{url:base},{url:`${base}/team`},{url:`${base}/about`},{url:`${base}/trending`}]}
